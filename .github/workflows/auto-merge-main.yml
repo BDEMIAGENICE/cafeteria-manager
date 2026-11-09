@@ -1,0 +1,43 @@
+name: Publier develop vers main (manuel)
+
+# À placer dans .github/workflows/auto-merge-main.yml
+on:
+  # Déclenchement manuel uniquement : onglet Actions > ce workflow > "Run workflow"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.BDE_BOT_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      HEAD_BRANCH: develop
+      BASE: main
+    steps:
+      - name: Trouver ou créer la pull request
+        id: pr
+        run: |
+          PR_NUMBER=$(gh pr list --head "$HEAD_BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            gh pr create \
+              --head "$HEAD_BRANCH" \
+              --base "$BASE" \
+              --title "Release: $HEAD_BRANCH vers $BASE" \
+              --body "PR créée automatiquement par GitHub Actions." || true
+            PR_NUMBER=$(gh pr list --head "$HEAD_BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Merge (merge commit, surtout pas de squash)
+        if: steps.pr.outputs.number != ''
+        run: |
+          gh pr merge "${{ steps.pr.outputs.number }}" --merge --auto \
+            || gh pr merge "${{ steps.pr.outputs.number }}" --merge
