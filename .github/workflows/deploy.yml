@@ -29,16 +29,6 @@ jobs:
           # Publishable (browser-safe) values, stored as repository variables.
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
-      # The public stock page (public-stock/) is served at /stock/, next to the app, with
-      # the same publishable Supabase values the app is built with.
-      - name: Add the public stock page
-        run: |
-          cp -r public-stock dist/stock
-          sed -i -e "s|https://pqwwmspzrvdbaceuotky.supabase.co|${VITE_SUPABASE_URL}|" \
-                 -e "s|COLLER_ICI_LA_CLE_PUBLISHABLE|${VITE_SUPABASE_PUBLISHABLE_KEY}|" dist/stock/config.js
-        env:
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

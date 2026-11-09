@@ -25,18 +25,22 @@ de vente. Jamais le coût d'achat ni la consommation.
 
 ## Mise en ligne
 
-1. Exécuter la migration dans l'éditeur SQL de Supabase.
-2. Merger dans `main` : le workflow GitHub Pages copie ce dossier sur
-   `https://tonoplas909.github.io/cafeteria-manager/stock/` et y met la clé publishable
-   des variables du dépôt.
+La page fait partie du build : `npm run build` copie ce dossier dans `dist/stock/` et y met
+les valeurs `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`, les mêmes que l'app.
+Elle est donc publiée avec le site, sur n'importe quel hébergeur (GitHub Pages, Vercel…),
+à l'adresse `<adresse du site>/stock/`.
 
-Pour héberger la page ailleurs, copier le dossier et remplir `publishableKey` dans
-`config.js` (Supabase, Project Settings > API Keys, « Publishable key »).
+1. Exécuter `supabase/migrations/20261109000000_public_stock.sql` dans l'éditeur SQL du
+   projet Supabase utilisé par le site.
+2. Déployer le site comme d'habitude.
+
+Pour héberger la page seule, ailleurs : copier ce dossier et remplir `config.js`
+(Supabase, Project Settings > API Keys, « Publishable key »).
 
 ## Écran devant la cafet
 
 Ouvrir l'adresse avec `?ecran` :
-`https://tonoplas909.github.io/cafeteria-manager/stock/?ecran`
+`<adresse du site>/stock/?ecran`
 
 Les textes sont plus grands, le curseur est masqué, l'écran ne se met pas en veille quand le
 navigateur le permet, et la liste défile lentement si elle dépasse la hauteur de l'écran.

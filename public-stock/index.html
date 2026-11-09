@@ -2,6 +2,10 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
+    <script>
+      // Served as …/stock (no slash), the relative links below would point one level up.
+      if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname + '/' + location.search);
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Stock du service — Cafet'MIAGE</title>
     <meta name="description" content="Le stock du service à la Cafet'MIAGE, annoncé en début de service." />

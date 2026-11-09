@@ -148,7 +148,7 @@
     }, STEP_MS);
   }
 
-  if (!config.supabaseUrl || !config.publishableKey || /COLLER_ICI/.test(config.publishableKey)) {
+  if (!config.supabaseUrl || !config.publishableKey || /COLLER_ICI|VOTRE-PROJET/.test(config.supabaseUrl + config.publishableKey)) {
     el('empty').textContent = 'Page pas encore configurée : renseignez la clé dans config.js.';
     return;
   }
