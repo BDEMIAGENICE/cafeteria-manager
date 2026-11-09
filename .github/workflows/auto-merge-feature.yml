@@ -1,4 +1,4 @@
-name: Auto PR + merge vers develop
+name: Auto PR + squash merge vers develop
 
 # À placer dans .github/workflows/auto-merge-feature.yml
 on:
@@ -25,24 +25,34 @@ jobs:
       GH_REPO: ${{ github.repository }}
       BRANCH: ${{ github.ref_name }}
       BASE: develop
+      # Message du dernier commit poussé (passé par env pour éviter toute injection)
+      COMMIT_MSG: ${{ github.event.head_commit.message }}
     steps:
       - name: Trouver ou créer la pull request
         id: pr
         run: |
+          # Titre de la PR = première ligne du message de commit
+          TITLE=$(printf '%s' "$COMMIT_MSG" | head -n 1)
+          BODY=$(printf '%s' "$COMMIT_MSG" | tail -n +2)
+          [ -z "$TITLE" ] && TITLE="Merge $BRANCH vers $BASE"
+
           PR_NUMBER=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
           if [ -z "$PR_NUMBER" ]; then
             gh pr create \
               --head "$BRANCH" \
               --base "$BASE" \
-              --title "Merge $BRANCH vers $BASE" \
-              --body "PR créée automatiquement par GitHub Actions."
+              --title "$TITLE" \
+              --body "${BODY:-PR créée automatiquement par GitHub Actions.}"
             PR_NUMBER=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
           fi
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
 
-      - name: Merge (merge commit classique)
+      - name: Squash merge
+        env:
+          PR_TITLE: ${{ steps.pr.outputs.title }}
         run: |
           # --auto attend que les checks requis passent (si tu as une branch protection).
           # Si l'auto-merge n'est pas activé sur le repo, on merge directement.
-          gh pr merge "${{ steps.pr.outputs.number }}" --merge --auto \
-            || gh pr merge "${{ steps.pr.outputs.number }}" --merge
+          gh pr merge "${{ steps.pr.outputs.number }}" --squash --subject "$PR_TITLE" --auto \
+            || gh pr merge "${{ steps.pr.outputs.number }}" --squash --subject "$PR_TITLE"
