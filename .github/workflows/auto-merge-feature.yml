@@ -1,0 +1,48 @@
+name: Auto PR + merge vers develop
+
+# À placer dans .github/workflows/auto-merge-feature.yml
+on:
+  push:
+    branches:
+      - "feature/**"
+      - "feat/**"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    env:
+      # PAT (ou token de GitHub App) du compte du BDE, stocké dans
+      # Settings > Secrets and variables > Actions > BDE_BOT_TOKEN
+      GH_TOKEN: ${{ secrets.BDE_BOT_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      BRANCH: ${{ github.ref_name }}
+      BASE: develop
+    steps:
+      - name: Trouver ou créer la pull request
+        id: pr
+        run: |
+          PR_NUMBER=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            gh pr create \
+              --head "$BRANCH" \
+              --base "$BASE" \
+              --title "Merge $BRANCH vers $BASE" \
+              --body "PR créée automatiquement par GitHub Actions."
+            PR_NUMBER=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Merge (merge commit classique)
+        run: |
+          # --auto attend que les checks requis passent (si tu as une branch protection).
+          # Si l'auto-merge n'est pas activé sur le repo, on merge directement.
+          gh pr merge "${{ steps.pr.outputs.number }}" --merge --auto \
+            || gh pr merge "${{ steps.pr.outputs.number }}" --merge
