@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -30,5 +30,37 @@ function precacheServiceWorker() {
   };
 }
 
+// The public pages (no sign-in) ship with the site, set up with the same Supabase values the
+// app is built with. They are part of the build so they work on any host (GitHub Pages,
+// Vercel, …) without an extra deploy step. Each is a folder of static files.
+const PUBLIC_PAGES = [
+  { from: 'public-stock', to: 'stock' }, // what is left on the counter
+  { from: 'public-opening', to: 'horaires' }, // which days the café opens
+];
+
+function publicPages(env) {
+  return {
+    name: 'public-pages',
+    apply: 'build',
+    writeBundle(options) {
+      const out = options.dir ? path.resolve(options.dir) : path.resolve('dist');
+      for (const page of PUBLIC_PAGES) {
+        const target = path.join(out, page.to);
+        fs.cpSync(path.resolve(page.from), target, { recursive: true });
+        fs.rmSync(path.join(target, 'README.md'), { force: true });
+        const config = path.join(target, 'config.js');
+        const filled = fs
+          .readFileSync(config, 'utf8')
+          .replace(/supabaseUrl: '[^']*'/, `supabaseUrl: ${JSON.stringify(env.VITE_SUPABASE_URL ?? '')}`)
+          .replace(/publishableKey: '[^']*'/, `publishableKey: ${JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '')}`);
+        fs.writeFileSync(config, filled);
+      }
+    },
+  };
+}
+
 // Relative base so the build works from a GitHub Pages sub-path (/<repo>/).
-export default defineConfig({ base: './', plugins: [react(), precacheServiceWorker()] });
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  return { base: './', plugins: [react(), precacheServiceWorker(), publicPages(env)] };
+});
