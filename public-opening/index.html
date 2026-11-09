@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      // Served as …/horaires (no slash), the relative links below would point one level up.
+      if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname + '/' + location.search);
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Jours d'ouverture — Cafet'MIAGE</title>
+    <meta name="description" content="Les jours et horaires d'ouverture de la Cafet'MIAGE pour les semaines à venir." />
+    <meta name="theme-color" content="#0E1A2B" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="po">
+      <header class="po-head">
+        <div class="po-brand">
+          <img src="assets/miage-logo.png" alt="" class="po-logo" width="56" height="64" />
+          <div>
+            <div class="po-name">Cafet'MIAGE</div>
+            <h1 class="po-title">Jours d'ouverture</h1>
+          </div>
+        </div>
+        <img src="assets/michel-megaphone.webp" alt="" class="po-michel" width="160" height="180" />
+      </header>
+
+      <section class="po-today" id="today" aria-live="polite" hidden>
+        <div class="po-today-label">Aujourd'hui</div>
+        <div class="po-today-status" id="today-status"></div>
+        <div class="po-today-detail" id="today-detail"></div>
+      </section>
+
+      <p class="po-notice">
+        <strong>Horaires prévus par l'équipe.</strong>
+        Ils peuvent changer : jetez un œil à cette page avant de venir.
+      </p>
+
+      <p class="po-alert" id="alert" role="status" hidden></p>
+      <p class="po-empty" id="empty">Chargement…</p>
+      <main class="po-weeks" id="weeks"></main>
+
+      <footer class="po-foot">
+        <a href="../stock/" class="po-link">Voir le stock du service</a>
+        <span id="foot">Page actualisée automatiquement</span>
+      </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

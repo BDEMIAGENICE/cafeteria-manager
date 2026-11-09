@@ -30,24 +30,31 @@ function precacheServiceWorker() {
   };
 }
 
-// The public stock page (public-stock/, no sign-in) ships with the site at stock/, set up
-// with the same Supabase values the app is built with. It is part of the build so it works
-// on any host (GitHub Pages, Vercel, …) without an extra deploy step.
-function publicStockPage(env) {
+// The public pages (no sign-in) ship with the site, set up with the same Supabase values the
+// app is built with. They are part of the build so they work on any host (GitHub Pages,
+// Vercel, …) without an extra deploy step. Each is a folder of static files.
+const PUBLIC_PAGES = [
+  { from: 'public-stock', to: 'stock' }, // what is left on the counter
+  { from: 'public-opening', to: 'horaires' }, // which days the café opens
+];
+
+function publicPages(env) {
   return {
-    name: 'public-stock-page',
+    name: 'public-pages',
     apply: 'build',
     writeBundle(options) {
       const out = options.dir ? path.resolve(options.dir) : path.resolve('dist');
-      const target = path.join(out, 'stock');
-      fs.cpSync(path.resolve('public-stock'), target, { recursive: true });
-      fs.rmSync(path.join(target, 'README.md'), { force: true });
-      const config = path.join(target, 'config.js');
-      const filled = fs
-        .readFileSync(config, 'utf8')
-        .replace(/supabaseUrl: '[^']*'/, `supabaseUrl: ${JSON.stringify(env.VITE_SUPABASE_URL ?? '')}`)
-        .replace(/publishableKey: '[^']*'/, `publishableKey: ${JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '')}`);
-      fs.writeFileSync(config, filled);
+      for (const page of PUBLIC_PAGES) {
+        const target = path.join(out, page.to);
+        fs.cpSync(path.resolve(page.from), target, { recursive: true });
+        fs.rmSync(path.join(target, 'README.md'), { force: true });
+        const config = path.join(target, 'config.js');
+        const filled = fs
+          .readFileSync(config, 'utf8')
+          .replace(/supabaseUrl: '[^']*'/, `supabaseUrl: ${JSON.stringify(env.VITE_SUPABASE_URL ?? '')}`)
+          .replace(/publishableKey: '[^']*'/, `publishableKey: ${JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '')}`);
+        fs.writeFileSync(config, filled);
+      }
     },
   };
 }
@@ -55,5 +62,5 @@ function publicStockPage(env) {
 // Relative base so the build works from a GitHub Pages sub-path (/<repo>/).
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
-  return { base: './', plugins: [react(), precacheServiceWorker(), publicStockPage(env)] };
+  return { base: './', plugins: [react(), precacheServiceWorker(), publicPages(env)] };
 });
