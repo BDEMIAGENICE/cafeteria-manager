@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Déployer le stock public</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: one reading column, steps as a vertical rail, code in framed blocks with a copy button. */
+  :root {
+    --bg: #eef3f6;
+    --surface: #ffffff;
+    --ink: #0e1a2b;
+    --muted: #4a5b70;
+    --line: #d3dde6;
+    --accent: #1f7a8c;
+    --accent-soft: #e3f4f7;
+    --warn: #8a5410;
+    --warn-soft: #fdf0dc;
+    --code-bg: #0e1a2b;
+    --code-fg: #e6eef5;
+    --code-dim: #8fa3b8;
+    --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+    --body: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1522; --surface: #132235; --ink: #eaf1f7; --muted: #a7b4c4; --line: #24364d;
+      --accent: #5cc6d8; --accent-soft: #12303b; --warn: #f4b664; --warn-soft: #33240f;
+      --code-bg: #07101b; --code-fg: #e6eef5; --code-dim: #8fa3b8; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1522; --surface: #132235; --ink: #eaf1f7; --muted: #a7b4c4; --line: #24364d;
+    --accent: #5cc6d8; --accent-soft: #12303b; --warn: #f4b664; --warn-soft: #33240f;
+    --code-bg: #07101b; --code-fg: #e6eef5; --code-dim: #8fa3b8; color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+  .page {
+    max-width: 780px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px 64px;
+    display: flex; flex-direction: column; gap: 40px;
+  }
+
+  header { display: flex; flex-direction: column; gap: 12px; }
+  .eyebrow { font-family: var(--display); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-size: 15px; }
+  h1 { margin: 0; font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: clamp(38px, 7vw, 56px); line-height: 1; letter-spacing: 0.01em; text-wrap: balance; }
+  .lede { margin: 0; font-size: 18px; color: var(--muted); max-width: 62ch; }
+  .url-box {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+    padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line);
+  }
+  .url-box span { color: var(--muted); font-size: 14px; }
+  .url-box code { font-family: var(--mono); font-size: 15px; color: var(--ink); overflow-wrap: anywhere; }
+
+  h2 { margin: 0; font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: 30px; line-height: 1.05; letter-spacing: 0.01em; text-wrap: balance; }
+  h3 { margin: 0; font-size: 18px; font-weight: 700; }
+  section { display: flex; flex-direction: column; gap: 16px; }
+  p { margin: 0; max-width: 66ch; }
+  ul, ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; max-width: 66ch; }
+  code.inline { font-family: var(--mono); font-size: 0.88em; padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--ink); overflow-wrap: anywhere; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  strong { font-weight: 700; }
+
+  /* steps: a numbered rail, the order matters */
+  .steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0; max-width: none; }
+  .step { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 18px; }
+  .step-mark { display: flex; flex-direction: column; align-items: center; }
+  .step-num {
+    width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--ink); color: var(--bg); font-family: var(--display); font-weight: 800; font-size: 22px;
+  }
+  .step-line { flex: 1; width: 2px; background: var(--line); margin: 6px 0; }
+  .step:last-child .step-line { display: none; }
+  .step-body { display: flex; flex-direction: column; gap: 12px; padding-bottom: 36px; min-width: 0; }
+  .step-body h3 { font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: 24px; letter-spacing: 0.01em; padding-top: 7px; }
+  .step-time { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* code blocks */
+  .code { position: relative; border-radius: 12px; background: var(--code-bg); min-width: 0; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 8px 16px; border-bottom: 1px solid #1d2f45; }
+  .code-label { font-family: var(--mono); font-size: 12px; color: var(--code-dim); overflow-wrap: anywhere; }
+  .copy {
+    font: 600 13px var(--body); color: var(--code-fg); background: #1d2f45; border: 1px solid #2c4562;
+    border-radius: 8px; padding: 6px 12px; cursor: pointer; min-height: 32px; flex: none;
+  }
+  .copy:hover { background: #26405e; }
+  .copy:focus-visible { outline: 2px solid #5cc6d8; outline-offset: 2px; }
+  pre { margin: 0; padding: 14px 16px; overflow-x: auto; color: var(--code-fg); font-family: var(--mono); font-size: 13.5px; line-height: 1.6; }
+  pre .c { color: var(--code-dim); }
+
+  .note { padding: 14px 16px; border-radius: 12px; background: var(--accent-soft); display: flex; flex-direction: column; gap: 6px; }
+  .note.warn { background: var(--warn-soft); }
+  .note.warn strong { color: var(--warn); }
+  .branch-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .branch-choice > div { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+  /* checks and troubleshooting */
+  .checks { list-style: none; padding: 0; gap: 10px; }
+  .checks li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .tick { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--accent); margin-top: 2px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th { font-family: var(--display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 14px; color: var(--muted); }
+  td:first-child { font-weight: 600; }
+
+  footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); padding-top: 18px; }
+
+  @media (max-width: 480px) {
+    .step { grid-template-columns: 34px minmax(0, 1fr); gap: 0 12px; }
+    .step-num { width: 34px; height: 34px; font-size: 18px; }
+    .step-body h3 { font-size: 21px; padding-top: 3px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Cafet'MIAGE · Guide de mise en ligne</div>
+    <h1>Déployer la page stock publique</h1>
+    <p class="lede">
+      La branche <code class="inline">main</code> contient une nouvelle page, sans connexion, qui affiche le stock de la cafet
+      aux étudiants et sur l'écran devant le comptoir. Elle est construite avec le site : sur Vercel, il suffit de récupérer
+      <code class="inline">main</code>, d'ajouter une fonction SQL et de redéployer. Comptez 5 minutes.
+    </p>
+    <div class="url-box">
+      <span>Une fois en ligne, la page sera à</span>
+      <code>https://&lt;votre-site&gt;.vercel.app/stock/</code>
+    </div>
+  </header>
+
+  <section aria-labelledby="before">
+    <h2 id="before">Avant de commencer</h2>
+    <ul>
+      <li>Un accès à l'<strong>éditeur SQL</strong> du projet Supabase utilisé par le site.</li>
+      <li>Un accès au <strong>projet Vercel</strong> du site.</li>
+      <li>Une copie locale du dépôt, avec Git.</li>
+      <li>
+        Dans Vercel, <code class="inline">VITE_SUPABASE_URL</code> et <code class="inline">VITE_SUPABASE_PUBLISHABLE_KEY</code>
+        doivent déjà exister (Settings → Environment Variables), puisque le site en a besoin. La page publique réutilise ces
+        deux valeurs : il n'y a aucune clé à copier à la main.
+      </li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="steps">
+    <h2 id="steps">Les trois étapes</h2>
+    <ol class="steps">
+      <li class="step">
+        <div class="step-mark"><div class="step-num">1</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <h3>Créer la fonction dans Supabase</h3>
+          <div class="step-time">Éditeur SQL · 1 minute</div>
+          <p>
+            Dans Supabase, ouvrez <strong>SQL Editor</strong> → <strong>New query</strong>, collez ce script et cliquez sur
+            <strong>Run</strong>. Supabase doit répondre « Success. No rows returned ».
+          </p>
+          <div class="code">
+            <div class="code-head">
+              <span class="code-label">supabase/migrations/20261109000000_public_stock.sql</span>
+              <button class="copy" type="button" data-copy="sql" id="copy-sql">Copier</button>
+            </div>
+            <pre id="sql"><span class="c">-- Public stock page (public-stock/): what the café has, readable without signing in.
+-- The products table stays staff-only. This function is the only way in for visitors,
+-- and it returns only what the page shows: never the purchase cost, the weekly usage
+-- or ids.
+--
+--   status: 'out' when nothing is left, 'low' at or under the minimum level, else 'ok'
+--   price:  the selling price, null when none is set</span>
+
+create or replace function public.public_stock()
+returns table (name text, category text, quantity numeric, status text, price numeric)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    p.name,
+    nullif(trim(p.category), ''),
+    p.current,
+    case
+      when p.current &lt;= 0 then 'out'
+      when p.current &lt;= p.min_level then 'low'
+      else 'ok'
+    end,
+    nullif(p.price, 0)
+  from public.products p
+  order by nullif(trim(p.category), '') nulls last, p.name
+$$;
+
+revoke all on function public.public_stock() from public;
+grant execute on function public.public_stock() to anon, authenticated;</pre>
+          </div>
+          <p>Pour vérifier, lancez cette requête : elle doit lister les produits avec leur état.</p>
+          <div class="code">
+            <div class="code-head">
+              <span class="code-label">Vérification</span>
+              <button class="copy" type="button" data-copy="sql-check" id="copy-sql-check">Copier</button>
+            </div>
+            <pre id="sql-check">select * from public_stock();</pre>
+          </div>
+          <div class="note">
+            <p>
+              La table des produits reste réservée à l'équipe. Cette fonction est la seule porte d'entrée pour les visiteurs :
+              elle renvoie le nom, la catégorie, la quantité, l'état et le prix de vente, jamais le coût d'achat ni la consommation.
+            </p>
+          </div>
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-mark"><div class="step-num">2</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <h3>Récupérer la branche main</h3>
+          <div class="step-time">Terminal · 1 minute</div>
+          <p>
+            Récupérez <code class="inline">main</code> dans la branche que Vercel déploie (Vercel → Settings → Git →
+            <strong>Production Branch</strong>), puis poussez-la.
+          </p>
+          <div class="branch-choice">
+            <div>
+              <p><strong>Vercel déploie <code class="inline">main</code></strong></p>
+              <div class="code">
+                <div class="code-head">
+                  <span class="code-label">bash</span>
+                  <button class="copy" type="button" data-copy="git-main" id="copy-git-main">Copier</button>
+                </div>
+                <pre id="git-main">git checkout main
+git pull https://github.com/Tonoplas909/cafeteria-manager.git main
+git push</pre>
+              </div>
+            </div>
+            <div>
+              <p><strong>Vercel déploie <code class="inline">deploy</code></strong></p>
+              <div class="code">
+                <div class="code-head">
+                  <span class="code-label">bash</span>
+                  <button class="copy" type="button" data-copy="git-deploy" id="copy-git-deploy">Copier</button>
+                </div>
+                <pre id="git-deploy">git checkout deploy
+git pull https://github.com/Tonoplas909/cafeteria-manager.git main
+git push</pre>
+              </div>
+            </div>
+          </div>
+          <p>
+            Sur <code class="inline">deploy</code>, Git crée un commit de fusion : acceptez le message proposé. La fusion a été
+            testée et ne crée aucun conflit.
+          </p>
+          <div class="note warn">
+            <p>
+              <strong>Pas de fonction Supabase à redéployer.</strong> Ce changement ne touche ni
+              <code class="inline">calendar-sync</code> ni <code class="inline">staff-admin</code>. En particulier, ne redéployez pas
+              <code class="inline">staff-admin</code> depuis <code class="inline">main</code> : la version de la branche
+              <code class="inline">deploy</code> lit l'adresse du site dans le secret <code class="inline">SITE_URL</code>, celle de
+              <code class="inline">main</code> n'autorise que l'ancienne adresse GitHub Pages.
+            </p>
+          </div>
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-mark"><div class="step-num">3</div><div class="step-line"></div></div>
+        <div class="step-body">
+          <h3>Déployer sur Vercel</h3>
+          <div class="step-time">Automatique · 1 à 2 minutes</div>
+          <p>
+            Le <code class="inline">git push</code> de l'étape 2 lance le déploiement tout seul. Les réglages Vercel ne changent
+            pas : commande de build <code class="inline">npm run build</code>, dossier de sortie <code class="inline">dist</code>.
+          </p>
+          <p>
+            Pendant le build, la page est copiée dans <code class="inline">dist/stock/</code> avec les valeurs
+            <code class="inline">VITE_SUPABASE_…</code> du projet Vercel. Pour relancer un déploiement à la main : Vercel →
+            Deployments → <strong>Redeploy</strong>, ou en ligne de commande :
+          </p>
+          <div class="code">
+            <div class="code-head">
+              <span class="code-label">bash</span>
+              <button class="copy" type="button" data-copy="vercel" id="copy-vercel">Copier</button>
+            </div>
+            <pre id="vercel">npx vercel --prod</pre>
+          </div>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="check">
+    <h2 id="check">Vérifier</h2>
+    <ul class="checks">
+      <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/stock/</code> affiche les produits par catégorie, sans demander de connexion.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Un encadré indique que les stocks sont ceux annoncés en début de service.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Changez un stock dans l'app : la page affiche la nouvelle quantité en moins de 30 secondes, sans être rechargée.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Le reste du site fonctionne comme avant, connexion comprise.</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="screen">
+    <h2 id="screen">L'écran devant la cafet</h2>
+    <p>
+      Ouvrez <code class="inline">https://&lt;votre-site&gt;/stock/?ecran</code> dans le navigateur de l'écran et passez en plein
+      écran (F11). Les textes sont plus grands, le curseur est masqué, l'écran ne se met pas en veille quand le navigateur le
+      permet, et la liste défile doucement si elle dépasse la hauteur de l'écran. La page se met à jour toute seule toutes les
+      30 secondes et garde le dernier stock affiché si le réseau coupe.
+    </p>
+  </section>
+
+  <section aria-labelledby="trouble">
+    <h2 id="trouble">Dépannage</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">Ce que vous voyez</th><th scope="col">Cause</th><th scope="col">Que faire</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>« Page pas encore configurée »</td>
+            <td>Les variables <code class="inline">VITE_SUPABASE_…</code> manquaient au moment du build.</td>
+            <td>Ajoutez-les dans Vercel pour l'environnement Production, puis Redeploy.</td>
+          </tr>
+          <tr>
+            <td>« Le stock ne peut pas être affiché pour le moment »</td>
+            <td>La fonction <code class="inline">public_stock</code> n'existe pas dans le projet Supabase du site.</td>
+            <td>Refaites l'étape 1 dans le bon projet, puis vérifiez avec <code class="inline">select * from public_stock();</code>.</td>
+          </tr>
+          <tr>
+            <td>404 sur <code class="inline">/stock/</code></td>
+            <td>Le déploiement a été fait sur un commit qui n'a pas encore la page.</td>
+            <td>Vérifiez dans Vercel → Deployments que le commit déployé contient le dossier <code class="inline">public-stock/</code>.</td>
+          </tr>
+          <tr>
+            <td>Le stock ne baisse pas pendant le service</td>
+            <td>Comportement normal : le stock est saisi une fois, en début de service.</td>
+            <td>Rien à faire. La page le précise aux étudiants.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    La page est dans le dossier <code class="inline">public-stock/</code> du dépôt. Son <code class="inline">README.md</code>
+    explique aussi comment l'héberger seule, en dehors du site.
+  </footer>
+</div>
+
+<script>
+  // Copy buttons: copy the text of the code block they name, else select it for a manual copy.
+  document.querySelectorAll('.copy').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var block = document.getElementById(button.dataset.copy);
+      var text = block.textContent;
+      var done = function (label) {
+        button.textContent = label;
+        setTimeout(function () { button.textContent = 'Copier'; }, 1800);
+      };
+      var selectBlock = function () {
+        var range = document.createRange();
+        range.selectNodeContents(block);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        done('Sélectionné : Ctrl+C');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done('Copié'); }, selectBlock);
+      } else {
+        selectBlock();
+      }
+    });
+  });
+</script>
+</body>
+</html>

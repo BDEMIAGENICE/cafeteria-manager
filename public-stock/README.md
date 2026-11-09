@@ -25,6 +25,9 @@ de vente. Jamais le coût d'achat ni la consommation.
 
 ## Mise en ligne
 
+Guide pas à pas, avec le SQL à copier et un dépannage : `docs/deployer-stock-public.html`
+(à ouvrir dans un navigateur).
+
 La page fait partie du build : `npm run build` copie ce dossier dans `dist/stock/` et y met
 les valeurs `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`, les mêmes que l'app.
 Elle est donc publiée avec le site, sur n'importe quel hébergeur (GitHub Pages, Vercel…),
