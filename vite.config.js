@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -30,5 +30,30 @@ function precacheServiceWorker() {
   };
 }
 
+// The public stock page (public-stock/, no sign-in) ships with the site at stock/, set up
+// with the same Supabase values the app is built with. It is part of the build so it works
+// on any host (GitHub Pages, Vercel, …) without an extra deploy step.
+function publicStockPage(env) {
+  return {
+    name: 'public-stock-page',
+    apply: 'build',
+    writeBundle(options) {
+      const out = options.dir ? path.resolve(options.dir) : path.resolve('dist');
+      const target = path.join(out, 'stock');
+      fs.cpSync(path.resolve('public-stock'), target, { recursive: true });
+      fs.rmSync(path.join(target, 'README.md'), { force: true });
+      const config = path.join(target, 'config.js');
+      const filled = fs
+        .readFileSync(config, 'utf8')
+        .replace(/supabaseUrl: '[^']*'/, `supabaseUrl: ${JSON.stringify(env.VITE_SUPABASE_URL ?? '')}`)
+        .replace(/publishableKey: '[^']*'/, `publishableKey: ${JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '')}`);
+      fs.writeFileSync(config, filled);
+    },
+  };
+}
+
 // Relative base so the build works from a GitHub Pages sub-path (/<repo>/).
-export default defineConfig({ base: './', plugins: [react(), precacheServiceWorker()] });
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  return { base: './', plugins: [react(), precacheServiceWorker(), publicStockPage(env)] };
+});

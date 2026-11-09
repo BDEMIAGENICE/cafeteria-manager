@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      // Served as …/stock (no slash), the relative links below would point one level up.
+      if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname + '/' + location.search);
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Stock du service — Cafet'MIAGE</title>
+    <meta name="description" content="Le stock du service à la Cafet'MIAGE, annoncé en début de service." />
+    <meta name="theme-color" content="#0E1A2B" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="ps" id="page">
+      <header class="ps-head">
+        <div class="ps-brand">
+          <img src="assets/miage-logo.png" alt="" class="ps-logo" width="56" height="64" />
+          <div>
+            <div class="ps-name">Cafet'MIAGE</div>
+            <h1 class="ps-title">Stock du service</h1>
+          </div>
+        </div>
+        <div class="ps-clock" aria-hidden="true">
+          <div class="ps-time" id="time">--:--</div>
+          <div class="ps-date" id="date"></div>
+        </div>
+        <img src="assets/michel-chef.webp" alt="" class="ps-michel" width="200" height="140" />
+      </header>
+
+      <p class="ps-notice">
+        <strong>Stocks annoncés en début de service.</strong>
+        Ils ne sont mis à jour qu'une fois par service : en cours de service, il peut en rester moins que ce qui est affiché.
+      </p>
+      <p class="ps-summary" id="summary" hidden></p>
+      <p class="ps-alert" id="alert" role="status" hidden></p>
+      <p class="ps-empty" id="empty">Chargement…</p>
+      <main class="ps-groups" id="groups"></main>
+
+      <footer class="ps-foot" id="foot">Page actualisée automatiquement toutes les 30 secondes</footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
