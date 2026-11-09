@@ -100,7 +100,9 @@ body {
 .ps-badge.is-out { background: #2c3644; color: #cbd5e1; }
 .ps-price { font-weight: 700; font-size: 17px; }
 
-.ps-foot { color: var(--muted); font-size: 14px; text-align: center; padding-top: 6px; }
+.ps-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; color: var(--muted); font-size: 14px; padding-top: 6px; }
+.ps-link { color: var(--cyan); font-weight: 700; text-underline-offset: 3px; }
+.ps-screen .ps-link { display: none; }
 
 /* the screen in front of the café (?ecran): bigger, no cursor */
 .ps-screen { max-width: none; padding: 28px 40px 40px; cursor: none; }

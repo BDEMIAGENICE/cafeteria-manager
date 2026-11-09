@@ -127,15 +127,20 @@
 <div class="page">
   <header>
     <div class="eyebrow">Cafet'MIAGE · Guide de mise en ligne</div>
-    <h1>Déployer la page stock publique</h1>
+    <h1>Déployer les pages publiques</h1>
     <p class="lede">
-      La branche <code class="inline">main</code> contient une nouvelle page, sans connexion, qui affiche le stock de la cafet
-      aux étudiants et sur l'écran devant le comptoir. Elle est construite avec le site : sur Vercel, il suffit de récupérer
-      <code class="inline">main</code>, d'ajouter une fonction SQL et de redéployer. Comptez 5 minutes.
+      La branche <code class="inline">main</code> contient deux pages sans connexion pour les étudiants : le
+      <strong>stock du service</strong>, aussi affiché sur l'écran devant le comptoir, et les <strong>jours d'ouverture</strong>
+      des 4 prochaines semaines. Elles sont construites avec le site : sur Vercel, il suffit de récupérer
+      <code class="inline">main</code>, d'ajouter deux fonctions SQL et de redéployer. Comptez 5 minutes.
     </p>
     <div class="url-box">
-      <span>Une fois en ligne, la page sera à</span>
+      <span>Stock du service</span>
       <code>https://&lt;votre-site&gt;.vercel.app/stock/</code>
+    </div>
+    <div class="url-box">
+      <span>Jours d'ouverture</span>
+      <code>https://&lt;votre-site&gt;.vercel.app/horaires/</code>
     </div>
   </header>
 
@@ -148,7 +153,7 @@
       <li>
         Dans Vercel, <code class="inline">VITE_SUPABASE_URL</code> et <code class="inline">VITE_SUPABASE_PUBLISHABLE_KEY</code>
         doivent déjà exister (Settings → Environment Variables), puisque le site en a besoin. La page publique réutilise ces
-        deux valeurs : il n'y a aucune clé à copier à la main.
+        deux valeurs pour les deux pages : il n'y a aucune clé à copier à la main.
       </li>
     </ul>
   </section>
@@ -159,12 +164,13 @@
       <li class="step">
         <div class="step-mark"><div class="step-num">1</div><div class="step-line"></div></div>
         <div class="step-body">
-          <h3>Créer la fonction dans Supabase</h3>
-          <div class="step-time">Éditeur SQL · 1 minute</div>
+          <h3>Créer les fonctions dans Supabase</h3>
+          <div class="step-time">Éditeur SQL · 2 minutes</div>
           <p>
-            Dans Supabase, ouvrez <strong>SQL Editor</strong> → <strong>New query</strong>, collez ce script et cliquez sur
-            <strong>Run</strong>. Supabase doit répondre « Success. No rows returned ».
+            Dans Supabase, ouvrez <strong>SQL Editor</strong> → <strong>New query</strong>, collez le premier script et cliquez
+            sur <strong>Run</strong>. Supabase doit répondre « Success. No rows returned ». Faites de même avec le second.
           </p>
+          <p><strong>Script 1 : le stock du service</strong></p>
           <div class="code">
             <div class="code-head">
               <span class="code-label">supabase/migrations/20261109000000_public_stock.sql</span>
@@ -202,18 +208,65 @@ $$;
 revoke all on function public.public_stock() from public;
 grant execute on function public.public_stock() to anon, authenticated;</pre>
           </div>
-          <p>Pour vérifier, lancez cette requête : elle doit lister les produits avec leur état.</p>
+          <p><strong>Script 2 : les jours d'ouverture</strong></p>
+          <div class="code">
+            <div class="code-head">
+              <span class="code-label">supabase/migrations/20261110000000_public_opening.sql</span>
+              <button class="copy" type="button" data-copy="sql-opening" id="copy-sql-opening">Copier</button>
+            </div>
+            <pre id="sql-opening"><span class="c">-- Public opening page (public-opening/): which days the café opens, readable without
+-- signing in. It returns every day of the coming `days` days (1 to 90, from today in
+-- Paris), with the same rule as the app: a date&#x27;s exception if it has one, else its
+-- weekday&#x27;s usual hours. Nothing about staff or sign-ups leaves the database.
+--
+--   open:       whether the café opens that day
+--   time_label: its hours, null when closed
+--   special:    the day differs from its weekday&#x27;s usual hours (closed or open on an
+--               unusual day, or other hours), because an admin set an exception</span>
+
+create or replace function public.public_opening(days int default 28)
+returns table (date date, open boolean, time_label text, special boolean)
+language sql
+stable
+security definer
+set search_path = &#x27;&#x27;
+as $$
+  with span as (
+    select ((now() at time zone &#x27;Europe/Paris&#x27;)::date + i) as day
+    from generate_series(0, least(greatest(coalesce(days, 28), 1), 90) - 1) as i
+  )
+  select
+    span.day,
+    hours.label is not null,
+    hours.label,
+    hours.label is distinct from oh.time_label
+  from span
+  left join public.opening_hours oh on oh.weekday = extract(isodow from span.day)
+  left join public.service_days sd on sd.date = span.day
+  cross join lateral (
+    select case when sd.closed then null else coalesce(sd.time_label, oh.time_label) end as label
+  ) as hours
+  order by span.day
+$$;
+
+revoke all on function public.public_opening(int) from public;
+grant execute on function public.public_opening(int) to anon, authenticated;</pre>
+          </div>
+          <p>Pour vérifier, lancez ces requêtes : la première liste les produits avec leur état, la seconde les 7 prochains jours.</p>
           <div class="code">
             <div class="code-head">
               <span class="code-label">Vérification</span>
               <button class="copy" type="button" data-copy="sql-check" id="copy-sql-check">Copier</button>
             </div>
-            <pre id="sql-check">select * from public_stock();</pre>
+            <pre id="sql-check">select * from public_stock();
+select * from public_opening(7);</pre>
           </div>
           <div class="note">
             <p>
-              La table des produits reste réservée à l'équipe. Cette fonction est la seule porte d'entrée pour les visiteurs :
-              elle renvoie le nom, la catégorie, la quantité, l'état et le prix de vente, jamais le coût d'achat ni la consommation.
+              Les tables restent réservées à l'équipe. Ces deux fonctions sont la seule porte d'entrée pour les visiteurs.
+              <code class="inline">public_stock</code> renvoie le nom, la catégorie, la quantité, l'état et le prix de vente,
+              jamais le coût d'achat ni la consommation. <code class="inline">public_opening</code> renvoie les dates et les
+              horaires, rien sur l'équipe ni sur les inscriptions.
             </p>
           </div>
         </div>
@@ -280,7 +333,8 @@ git push</pre>
             pas : commande de build <code class="inline">npm run build</code>, dossier de sortie <code class="inline">dist</code>.
           </p>
           <p>
-            Pendant le build, la page est copiée dans <code class="inline">dist/stock/</code> avec les valeurs
+            Pendant le build, les pages sont copiées dans <code class="inline">dist/stock/</code> et
+            <code class="inline">dist/horaires/</code> avec les valeurs
             <code class="inline">VITE_SUPABASE_…</code> du projet Vercel. Pour relancer un déploiement à la main : Vercel →
             Deployments → <strong>Redeploy</strong>, ou en ligne de commande :
           </p>
@@ -302,6 +356,8 @@ git push</pre>
       <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/stock/</code> affiche les produits par catégorie, sans demander de connexion.</span></li>
       <li><span class="tick" aria-hidden="true"></span><span>Un encadré indique que les stocks sont ceux annoncés en début de service.</span></li>
       <li><span class="tick" aria-hidden="true"></span><span>Changez un stock dans l'app : la page affiche la nouvelle quantité en moins de 30 secondes, sans être rechargée.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/horaires/</code> affiche l'état du jour (« Ouvre à… », « Ouvert maintenant »…) et les 4 prochaines semaines.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Fermez un jour dans l'app (Planning → Modifier ce jour) : il apparaît en « Fermeture exceptionnelle » sur la page des horaires.</span></li>
       <li><span class="tick" aria-hidden="true"></span><span>Le reste du site fonctionne comme avant, connexion comprise.</span></li>
     </ul>
   </section>
@@ -332,12 +388,17 @@ git push</pre>
           <tr>
             <td>« Le stock ne peut pas être affiché pour le moment »</td>
             <td>La fonction <code class="inline">public_stock</code> n'existe pas dans le projet Supabase du site.</td>
-            <td>Refaites l'étape 1 dans le bon projet, puis vérifiez avec <code class="inline">select * from public_stock();</code>.</td>
+            <td>Refaites l'étape 1 (script 1) dans le bon projet, puis vérifiez avec <code class="inline">select * from public_stock();</code>.</td>
           </tr>
           <tr>
-            <td>404 sur <code class="inline">/stock/</code></td>
+            <td>« Les horaires ne peuvent pas être affichés pour le moment »</td>
+            <td>La fonction <code class="inline">public_opening</code> n'existe pas dans le projet Supabase du site.</td>
+            <td>Refaites l'étape 1 (script 2), puis vérifiez avec <code class="inline">select * from public_opening(7);</code>.</td>
+          </tr>
+          <tr>
+            <td>404 sur <code class="inline">/stock/</code> ou <code class="inline">/horaires/</code></td>
             <td>Le déploiement a été fait sur un commit qui n'a pas encore la page.</td>
-            <td>Vérifiez dans Vercel → Deployments que le commit déployé contient le dossier <code class="inline">public-stock/</code>.</td>
+            <td>Vérifiez dans Vercel → Deployments que le commit déployé contient les dossiers <code class="inline">public-stock/</code> et <code class="inline">public-opening/</code>.</td>
           </tr>
           <tr>
             <td>Le stock ne baisse pas pendant le service</td>
@@ -350,8 +411,8 @@ git push</pre>
   </section>
 
   <footer>
-    La page est dans le dossier <code class="inline">public-stock/</code> du dépôt. Son <code class="inline">README.md</code>
-    explique aussi comment l'héberger seule, en dehors du site.
+    Les pages sont dans les dossiers <code class="inline">public-stock/</code> et <code class="inline">public-opening/</code>
+    du dépôt. Leur <code class="inline">README.md</code> explique aussi comment les héberger seules, en dehors du site.
   </footer>
 </div>
 
