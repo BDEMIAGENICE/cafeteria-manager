@@ -109,7 +109,7 @@
       lastUpdate = new Date();
       el('alert').hidden = true;
       el('foot').textContent =
-        'Mis à jour à ' + clock(lastUpdate, true) + ' · actualisation automatique toutes les ' + refreshMs / 1000 + ' secondes';
+        'Page actualisée à ' + clock(lastUpdate, true) + ' · actualisation automatique toutes les ' + refreshMs / 1000 + ' secondes';
     } catch (e) {
       showError();
     } finally {

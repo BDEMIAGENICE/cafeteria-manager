@@ -58,6 +58,12 @@ body {
 .ps-michel { width: 170px; height: auto; flex: none; }
 
 /* summary and messages */
+.ps-notice {
+  margin: 0; padding: 14px 18px; border-radius: 14px;
+  background: #13324a; border: 2px solid var(--cyan); color: #dbeef3; font-size: 17px; line-height: 1.45;
+}
+.ps-notice strong { color: #fff; }
+.ps-screen .ps-notice { font-size: 22px; }
 .ps-summary { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--muted); font-size: 16px; }
 .ps-count { display: inline-flex; align-items: center; gap: 8px; }
 .ps-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }

@@ -6,6 +6,9 @@ Page sans connexion qui affiche ce qu'il reste au comptoir de la Cafet'MIAGE, po
 - Fichiers statiques, sans build ni dépendance : `index.html`, `style.css`, `app.js`, `config.js`.
 - Actualisation automatique toutes les 30 secondes (`refreshSeconds` dans `config.js`), et dès que la page revient au premier plan.
 - Si le réseau coupe, le dernier stock reste affiché avec un message, et la page réessaie toute seule.
+- Les stocks sont saisis une fois par service, au début : la page le dit en haut, car en cours
+  de service il peut en rester moins que ce qui est affiché. « Page actualisée à … » en bas
+  donne l'heure du dernier rechargement de la page, pas celle de la saisie du stock.
 
 ## Ce que voient les visiteurs
 
