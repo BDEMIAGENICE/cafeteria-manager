@@ -30,6 +30,9 @@
   --muted: #a7b4c4;
   --cyan: #3bb5cb;
   --amber: #f4a43a;
+  --green: #4ade80;
+  --green-bg: #11382a;
+  --green-line: #2b7a52;
   --heading: 'Barlow Condensed', system-ui, sans-serif;
   --body: 'Figtree', system-ui, sans-serif;
 }
@@ -170,13 +173,46 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 4px 20px;
   padding: 20px 22px; border-radius: 18px; background: var(--tile); border: 2px solid var(--line); border-left-width: 10px;
 }
-.po-today.is-open { border-left-color: var(--cyan); }
+.po-today-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .po-today.is-soon { border-left-color: var(--cyan); }
-.po-today.is-closed { border-left-color: #64748b; }
-.po-today-label { grid-row: span 2; font-family: var(--heading); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-size: 18px; }
+.po-today.is-over, .po-today.is-closed { border-left-color: #64748b; }
+.po-today-label { font-family: var(--heading); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-size: 18px; }
 .po-today-status { font-family: var(--heading); font-weight: 800; text-transform: uppercase; font-size: clamp(28px, 3.6vw, 44px); line-height: 1.05; }
-.po-today.is-open .po-today-status, .po-today.is-soon .po-today-status { color: var(--cyan); }
 .po-today-detail { color: var(--text); font-size: 17px; }
+
+/* before the opening: the time left */
+.po-today.is-soon .po-today-status { color: var(--cyan); }
+.po-today-count {
+  font-family: var(--heading); font-weight: 800; font-size: clamp(52px, 8vw, 96px); line-height: 1;
+  letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--text);
+}
+
+/* during the service: green, with a pulsing dot */
+.po-today.is-open { background: var(--green-bg); border-color: var(--green-line); border-left-color: var(--green); }
+.po-today.is-open .po-today-label { color: #9fdcb9; }
+.po-today.is-open .po-today-status { color: var(--green); }
+.po-today.is-open .po-today-status::before {
+  content: ''; display: inline-block; width: 0.38em; height: 0.38em; margin-right: 0.45em; vertical-align: 0.08em;
+  border-radius: 50%; background: var(--green); animation: po-pulse 1.8s ease-out infinite;
+}
+@keyframes po-pulse {
+  from { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.65); }
+  to { box-shadow: 0 0 0 0.3em rgba(74, 222, 128, 0); }
+}
+
+/* service finished: a quieter line */
+.po-today.is-over .po-today-status { font-size: clamp(22px, 2.6vw, 30px); color: var(--muted); }
+
+/* closed day: the next opening, made prominent */
+.po-next {
+  align-self: flex-start; max-width: 100%; margin-top: 8px; padding: 14px 20px 16px; border-radius: 14px;
+  background: #13324a; border: 2px solid var(--cyan); display: flex; flex-direction: column; gap: 4px;
+}
+.po-next-label { font-family: var(--heading); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 17px; color: var(--cyan); }
+.po-next-day { font-family: var(--heading); font-weight: 800; text-transform: uppercase; font-size: clamp(30px, 4.4vw, 54px); line-height: 1.05; overflow-wrap: anywhere; }
+.po-next-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.po-next-hours { font-family: var(--heading); font-weight: 800; font-size: clamp(24px, 3vw, 32px); color: var(--cyan); font-variant-numeric: tabular-nums; }
+.po-next-in { padding: 3px 12px; border-radius: 999px; background: var(--cyan); color: var(--ink); font-size: 14px; font-weight: 700; }
 
 .po-notice { margin: 0; color: var(--muted); font-size: 15px; }
 .po-notice strong { color: var(--text); }
@@ -246,7 +282,8 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   .po-logo { width: 44px; height: 50px; }
   .po-michel { width: 76px; }
   .po-today { grid-template-columns: minmax(0, 1fr); padding: 16px; }
-  .po-today-label { grid-row: auto; font-size: 15px; }
+  .po-today-label { font-size: 15px; }
+  .po-next { align-self: stretch; padding: 12px 16px 14px; }
   .po-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .po-day { min-height: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px 14px; }
   .po-day.is-open { border-top-width: 2px; border-left: 6px solid var(--cyan); }
@@ -260,4 +297,5 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   * { scroll-behavior: auto; }
   .pc-pill, .pc-tab, .pc-lang-btn { transition: none; }
   .pc-in-right, .pc-in-left { animation: none; }
+  .po-today.is-open .po-today-status::before { animation: none; }
 }
