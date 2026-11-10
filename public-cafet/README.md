@@ -4,9 +4,16 @@ Une seule page sans connexion, avec deux onglets : **Jours d'ouverture** et **St
 la même base Supabase que l'app. Adresse : `<adresse du site>/cafet/`.
 
 - Fichiers statiques, sans build ni dépendance : `index.html`, `style.css`, `config.js`, et un
-  script par partie (`tabs.js`, `opening.js`, `stock.js`).
+  script par partie (`i18n.js`, `tabs.js`, `opening.js`, `stock.js`).
 - L'onglet est dans l'adresse : `…/cafet/#horaires` et `…/cafet/#stock` ouvrent directement
   l'onglet voulu. Sans rien, la page s'ouvre sur les jours d'ouverture.
+- Changer d'onglet est animé : une pastille glisse sous l'onglet choisi et le contenu arrive
+  par le côté de l'onglet. Rien ne bouge si le système demande de réduire les animations.
+- La page est en français et en anglais. Les boutons **FR / EN**, en haut, changent la langue
+  (dates, heures, prix et messages compris). Le choix est gardé sur l'appareil ; à la première
+  visite, la page suit la langue du navigateur, sinon le français. L'écran `?ecran` reste en
+  français. Les noms de produits et de catégories viennent de la base et ne sont pas traduits.
+  Tous les textes sont dans `i18n.js` : pour modifier une phrase, c'est là.
 - Les anciennes adresses `…/horaires/` et `…/stock/` (y compris `…/stock/?ecran`) redirigent
   vers le bon onglet : les liens déjà partagés continuent de marcher.
 

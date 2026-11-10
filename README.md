@@ -29,6 +29,8 @@ For a given date the schedule uses, in this order: the date's own exception (**E
 
 `/cafet/#horaires` and `/cafet/#stock` open a tab directly, and `/cafet/?ecran` is the stock-only screen for in front of the café. The earlier addresses `/horaires/` and `/stock/` redirect to the matching tab.
 
+The page is in French and English (FR / EN buttons at the top; the choice is kept on the device, and a first visit follows the browser's language). Texts live in `public-cafet/i18n.js`. The screen in front of the café stays in French. Switching tab is animated, unless the system asks for reduced motion.
+
 ## Deploy
 
 Pushing to `main` builds and publishes to GitHub Pages (`.github/workflows/deploy.yml`). Set the repository variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` first.
