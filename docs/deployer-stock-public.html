@@ -129,18 +129,18 @@
     <div class="eyebrow">Cafet'MIAGE · Guide de mise en ligne</div>
     <h1>Déployer les pages publiques</h1>
     <p class="lede">
-      La branche <code class="inline">main</code> contient deux pages sans connexion pour les étudiants : le
-      <strong>stock du service</strong>, aussi affiché sur l'écran devant le comptoir, et les <strong>jours d'ouverture</strong>
-      des 4 prochaines semaines. Elles sont construites avec le site : sur Vercel, il suffit de récupérer
+      La branche <code class="inline">main</code> contient une page sans connexion pour les étudiants, avec deux onglets : les
+      <strong>jours d'ouverture</strong> des 4 prochaines semaines et le <strong>stock du service</strong>, aussi affiché sur
+      l'écran devant le comptoir. Elle est construite avec le site : sur Vercel, il suffit de récupérer
       <code class="inline">main</code>, d'ajouter deux fonctions SQL et de redéployer. Comptez 5 minutes.
     </p>
     <div class="url-box">
-      <span>Stock du service</span>
-      <code>https://&lt;votre-site&gt;.vercel.app/stock/</code>
+      <span>Jours d'ouverture et stock</span>
+      <code>https://&lt;votre-site&gt;.vercel.app/cafet/</code>
     </div>
     <div class="url-box">
-      <span>Jours d'ouverture</span>
-      <code>https://&lt;votre-site&gt;.vercel.app/horaires/</code>
+      <span>Directement sur un onglet</span>
+      <code>…/cafet/#horaires</code> · <code>…/cafet/#stock</code>
     </div>
   </header>
 
@@ -153,7 +153,7 @@
       <li>
         Dans Vercel, <code class="inline">VITE_SUPABASE_URL</code> et <code class="inline">VITE_SUPABASE_PUBLISHABLE_KEY</code>
         doivent déjà exister (Settings → Environment Variables), puisque le site en a besoin. La page publique réutilise ces
-        deux valeurs pour les deux pages : il n'y a aucune clé à copier à la main.
+        deux valeurs pour la page : il n'y a aucune clé à copier à la main.
       </li>
     </ul>
   </section>
@@ -381,8 +381,7 @@ git push</pre>
             pas : commande de build <code class="inline">npm run build</code>, dossier de sortie <code class="inline">dist</code>.
           </p>
           <p>
-            Pendant le build, les pages sont copiées dans <code class="inline">dist/stock/</code> et
-            <code class="inline">dist/horaires/</code> avec les valeurs
+            Pendant le build, la page est copiée dans <code class="inline">dist/cafet/</code> avec les valeurs
             <code class="inline">VITE_SUPABASE_…</code> du projet Vercel. Pour relancer un déploiement à la main : Vercel →
             Deployments → <strong>Redeploy</strong>, ou en ligne de commande :
           </p>
@@ -401,12 +400,13 @@ git push</pre>
   <section aria-labelledby="check">
     <h2 id="check">Vérifier</h2>
     <ul class="checks">
-      <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/stock/</code> affiche les produits par catégorie, sans demander de connexion.</span></li>
-      <li><span class="tick" aria-hidden="true"></span><span>Un encadré indique que ce n'est pas le stock en temps réel : l'équipe le met à jour à la main au début de chaque service.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/cafet/</code> s'ouvre sans demander de connexion, avec deux onglets : « Jours d'ouverture » et « Stock ».</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>L'onglet Stock affiche les produits par catégorie. Un encadré indique que ce n'est pas le stock en temps réel : l'équipe le met à jour à la main au début de chaque service.</span></li>
       <li><span class="tick" aria-hidden="true"></span><span>Changez un stock dans l'app : la page affiche la nouvelle quantité en moins de 30 secondes, sans être rechargée (c'est ce que fait l'équipe en début de service).</span></li>
-      <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/horaires/</code> affiche l'état du jour (« Ouvre à… », « Ouvert maintenant »…) et les 4 prochaines semaines.</span></li>
-      <li><span class="tick" aria-hidden="true"></span><span>Planifiez une semaine dans l'app (Planning → Planifier la semaine, par exemple mardi et jeudi seulement) : la page des horaires n'affiche que ces jours ouverts pour cette semaine.</span></li>
-      <li><span class="tick" aria-hidden="true"></span><span>Fermez un jour dans l'app (Planning → Modifier ce jour) : il apparaît en « Fermeture exceptionnelle » sur la page des horaires.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>L'onglet Jours d'ouverture affiche l'état du jour (« Ouvre à… », « Ouvert maintenant »…) et les 4 prochaines semaines.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Planifiez une semaine dans l'app (Planning → Planifier la semaine, par exemple mardi et jeudi seulement) : l'onglet Jours d'ouverture n'affiche que ces jours ouverts pour cette semaine.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Fermez un jour dans l'app (Planning → Modifier ce jour) : il apparaît en « Fermeture exceptionnelle » dans l'onglet Jours d'ouverture.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Les anciennes adresses <code class="inline">…/stock/</code> et <code class="inline">…/horaires/</code> redirigent vers le bon onglet.</span></li>
       <li><span class="tick" aria-hidden="true"></span><span>Le reste du site fonctionne comme avant, connexion comprise.</span></li>
     </ul>
   </section>
@@ -414,8 +414,8 @@ git push</pre>
   <section aria-labelledby="screen">
     <h2 id="screen">L'écran devant la cafet</h2>
     <p>
-      Ouvrez <code class="inline">https://&lt;votre-site&gt;/stock/?ecran</code> dans le navigateur de l'écran et passez en plein
-      écran (F11). Les textes sont plus grands, le curseur est masqué, l'écran ne se met pas en veille quand le navigateur le
+      Ouvrez <code class="inline">https://&lt;votre-site&gt;/cafet/?ecran</code> dans le navigateur de l'écran et passez en plein
+      écran (F11). L'écran n'affiche que le stock, sans onglets. Les textes sont plus grands, le curseur est masqué, l'écran ne se met pas en veille quand le navigateur le
       permet, et la liste défile doucement si elle dépasse la hauteur de l'écran. La page se met à jour toute seule toutes les
       30 secondes et garde le dernier stock affiché si le réseau coupe.
     </p>
@@ -445,9 +445,9 @@ git push</pre>
             <td>Refaites l'étape 1 (script 2), puis vérifiez avec <code class="inline">select * from public_opening(7);</code>.</td>
           </tr>
           <tr>
-            <td>404 sur <code class="inline">/stock/</code> ou <code class="inline">/horaires/</code></td>
+            <td>404 sur <code class="inline">/cafet/</code></td>
             <td>Le déploiement a été fait sur un commit qui n'a pas encore la page.</td>
-            <td>Vérifiez dans Vercel → Deployments que le commit déployé contient les dossiers <code class="inline">public-stock/</code> et <code class="inline">public-opening/</code>.</td>
+            <td>Vérifiez dans Vercel → Deployments que le commit déployé contient le dossier <code class="inline">public-cafet/</code>.</td>
           </tr>
           <tr>
             <td>Le stock ne baisse pas pendant le service</td>
@@ -460,8 +460,8 @@ git push</pre>
   </section>
 
   <footer>
-    Les pages sont dans les dossiers <code class="inline">public-stock/</code> et <code class="inline">public-opening/</code>
-    du dépôt. Leur <code class="inline">README.md</code> explique aussi comment les héberger seules, en dehors du site.
+    La page est dans le dossier <code class="inline">public-cafet/</code> du dépôt. Son
+    <code class="inline">README.md</code> explique aussi comment l'héberger seule, en dehors du site.
   </footer>
 </div>
 

@@ -1,12 +1,13 @@
-// Cafet'MIAGE public stock page. No sign-in, no build step, no library: it reads the
+// Cafet'MIAGE public page, "Stock" tab. No sign-in, no build step, no library: it reads the
 // public_stock() function of the app's Supabase database through its REST API.
 //
-// Add ?ecran to the address on the screen in front of the café: the page keeps the
-// screen awake and slowly scrolls the list when it is longer than the screen.
+// Add ?ecran to the address on the screen in front of the café: the page then shows only
+// this tab, keeps the screen awake and slowly scrolls the list when it is longer than the screen.
 (function () {
   'use strict';
 
-  var config = window.PUBLIC_STOCK_CONFIG || {};
+  var site = window.PUBLIC_CONFIG || {};
+  var config = site.stock || {};
   var refreshMs = (config.refreshSeconds || 30) * 1000;
   var screenMode = new URLSearchParams(window.location.search).has('ecran');
   var LABELS = { ok: 'Disponible', low: 'Bientôt épuisé', out: 'Épuisé' };
@@ -35,15 +36,15 @@
   }
 
   function render(items) {
-    var groups = el('groups');
+    var groups = el('stock-groups');
     groups.replaceChildren();
 
-    el('empty').hidden = items.length > 0;
-    if (!items.length) el('empty').textContent = 'Aucun produit pour le moment.';
+    el('stock-empty').hidden = items.length > 0;
+    if (!items.length) el('stock-empty').textContent = 'Aucun produit pour le moment.';
 
     var count = { ok: 0, low: 0, out: 0 };
     items.forEach(function (i) { count[i.status] += 1; });
-    var summary = el('summary');
+    var summary = el('stock-summary');
     summary.hidden = !items.length;
     summary.replaceChildren();
     ['ok', 'low', 'out'].forEach(function (s) {
@@ -84,12 +85,12 @@
   }
 
   function showError() {
-    var alert = el('alert');
+    var alert = el('stock-alert');
     alert.hidden = false;
     alert.textContent = lastUpdate
       ? 'Connexion perdue : dernier chargement à ' + clock(lastUpdate) + '. Nouvel essai automatique.'
       : 'Le stock ne peut pas être affiché pour le moment. Nouvel essai automatique.';
-    if (!lastUpdate) el('empty').hidden = true;
+    if (!lastUpdate) el('stock-empty').hidden = true;
   }
 
   var loading = false;
@@ -97,9 +98,9 @@
     if (loading) return;
     loading = true;
     try {
-      var res = await fetch(config.supabaseUrl + '/rest/v1/rpc/public_stock', {
+      var res = await fetch(site.supabaseUrl + '/rest/v1/rpc/public_stock', {
         method: 'POST',
-        headers: { apikey: config.publishableKey, 'Content-Type': 'application/json' },
+        headers: { apikey: site.publishableKey, 'Content-Type': 'application/json' },
         body: '{}',
         cache: 'no-store',
       });
@@ -107,9 +108,9 @@
       var items = await res.json();
       render(Array.isArray(items) ? items : []);
       lastUpdate = new Date();
-      el('alert').hidden = true;
+      el('stock-alert').hidden = true;
       // This is when the page was reloaded, not when the stock was counted: say so.
-      el('foot').textContent =
+      el('stock-foot').textContent =
         'Page rechargée à ' + clock(lastUpdate, true) + ' · le stock, lui, est mis à jour à la main en début de service';
     } catch (e) {
       showError();
@@ -120,9 +121,9 @@
 
   function tick() {
     var now = new Date();
-    el('time').textContent = clock(now);
+    el('stock-time').textContent = clock(now);
     var date = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-    el('date').textContent = date.charAt(0).toUpperCase() + date.slice(1);
+    el('stock-date').textContent = date.charAt(0).toUpperCase() + date.slice(1);
   }
 
   // Keeps the café screen awake, where the browser allows it.
@@ -149,8 +150,8 @@
     }, STEP_MS);
   }
 
-  if (!config.supabaseUrl || !config.publishableKey || /COLLER_ICI|VOTRE-PROJET/.test(config.supabaseUrl + config.publishableKey)) {
-    el('empty').textContent = 'Page pas encore configurée : renseignez la clé dans config.js.';
+  if (!site.supabaseUrl || !site.publishableKey || /COLLER_ICI|VOTRE-PROJET/.test(site.supabaseUrl + site.publishableKey)) {
+    el('stock-empty').textContent = 'Page pas encore configurée : renseignez la clé dans config.js.';
     return;
   }
 

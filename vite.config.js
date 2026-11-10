@@ -30,13 +30,34 @@ function precacheServiceWorker() {
   };
 }
 
-// The public pages (no sign-in) ship with the site, set up with the same Supabase values the
-// app is built with. They are part of the build so they work on any host (GitHub Pages,
-// Vercel, …) without an extra deploy step. Each is a folder of static files.
-const PUBLIC_PAGES = [
-  { from: 'public-stock', to: 'stock' }, // what is left on the counter
-  { from: 'public-opening', to: 'horaires' }, // which days the café opens
-];
+// The public page (no sign-in) ships with the site, set up with the same Supabase values the
+// app is built with. It is part of the build so it works on any host (GitHub Pages, Vercel, …)
+// without an extra deploy step. It is a folder of static files: one page, one tab for the
+// opening days and one for the stock.
+const PUBLIC_PAGES = [{ from: 'public-cafet', to: 'cafet' }];
+
+// The opening days and the stock used to be two pages, /horaires/ and /stock/. Those
+// addresses were shared, so they stay and lead to the matching tab (keeping ?ecran).
+const LEGACY_PAGES = { stock: 'stock', horaires: 'horaires' }; // old folder -> tab
+
+const redirectPage = (tab) => `<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Cafet'MIAGE</title>
+    <script>
+      // Served without the closing slash, "../cafet/" would point one level too high.
+      if (!/\\/$|\\.html$/.test(location.pathname)) location.replace(location.pathname + '/' + location.search + location.hash);
+      else location.replace('../cafet/' + location.search + '#${tab}');
+    </script>
+  </head>
+  <body>
+    <p><a href="../cafet/#${tab}">Cafet'MIAGE</a></p>
+  </body>
+</html>
+`;
 
 function publicPages(env) {
   return {
@@ -44,6 +65,10 @@ function publicPages(env) {
     apply: 'build',
     writeBundle(options) {
       const out = options.dir ? path.resolve(options.dir) : path.resolve('dist');
+      for (const [folder, tab] of Object.entries(LEGACY_PAGES)) {
+        fs.mkdirSync(path.join(out, folder), { recursive: true });
+        fs.writeFileSync(path.join(out, folder, 'index.html'), redirectPage(tab));
+      }
       for (const page of PUBLIC_PAGES) {
         const target = path.join(out, page.to);
         fs.cpSync(path.resolve(page.from), target, { recursive: true });

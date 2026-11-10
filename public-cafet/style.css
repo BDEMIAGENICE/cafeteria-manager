@@ -1,5 +1,5 @@
-/* Cafet'MIAGE opening days page: dark like the stock page, readable on a phone and a screen.
-   Colours are the app's MIAGE palette. */
+/* Cafet'MIAGE public page: opening days and stock, one tab each. Dark, readable from across
+   the room, and on a phone. Colours are the app's MIAGE palette. */
 
 @font-face {
   font-family: 'Barlow Condensed'; font-style: normal; font-weight: 800; font-display: swap;
@@ -42,9 +42,88 @@ body {
 }
 a { color: var(--cyan); text-underline-offset: 3px; }
 a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 4px; }
+/* a class that sets "display" must not keep a hidden element on screen */
+[hidden] { display: none !important; }
 
-.po { max-width: 1200px; margin: 0 auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 22px; }
+/* page: the tabs, then the page of the selected tab */
+.pc { max-width: 1200px; margin: 0 auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 22px; }
+.pc-tabs {
+  display: flex; gap: 6px; align-self: flex-start; padding: 6px;
+  background: var(--tile); border: 2px solid var(--line); border-radius: 999px;
+}
+.pc-tab {
+  appearance: none; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+  min-height: 44px; padding: 0 24px; border-radius: 999px;
+  font-family: var(--heading); font-weight: 800; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.pc-tab:hover { color: var(--text); }
+.pc-tab[aria-selected="true"] { background: var(--cyan); color: var(--ink); }
+.pc-tab:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.ps, .po { display: flex; flex-direction: column; min-width: 0; }
+.ps { gap: 20px; }
+.po { gap: 22px; }
 
+/* ---- Stock ---- */
+/* header */
+.ps-head { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.ps-brand { display: flex; align-items: center; gap: 16px; flex: 1 1 auto; min-width: 0; }
+.ps-logo { width: 56px; height: 64px; object-fit: contain; padding: 4px; background: #fff; border-radius: 12px; flex: none; }
+.ps-name { font-family: var(--heading); font-weight: 800; font-size: 18px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cyan); }
+.ps-title {
+  margin: 0; font-family: var(--heading); font-weight: 800; text-transform: uppercase;
+  font-size: clamp(32px, 4.4vw, 64px); line-height: 1; letter-spacing: 0.01em;
+}
+.ps-clock { text-align: right; }
+.ps-time { font-family: var(--heading); font-weight: 800; font-size: clamp(34px, 4vw, 60px); line-height: 1; font-variant-numeric: tabular-nums; }
+.ps-date { color: var(--muted); font-size: 15px; }
+.ps-michel { width: 170px; height: auto; flex: none; }
+
+/* summary and messages */
+.ps-notice {
+  margin: 0; padding: 14px 18px; border-radius: 14px;
+  background: #13324a; border: 2px solid var(--cyan); color: #dbeef3; font-size: 17px; line-height: 1.45;
+}
+.ps-notice strong { color: #fff; }
+.ps-screen .ps-notice { font-size: 22px; }
+.ps-summary { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--muted); font-size: 16px; }
+.ps-count { display: inline-flex; align-items: center; gap: 8px; }
+.ps-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.ps-dot.is-ok { background: var(--cyan); }
+.ps-dot.is-low { background: var(--amber); }
+.ps-dot.is-out { background: #64748b; }
+.ps-alert { margin: 0; padding: 12px 16px; border-radius: 12px; background: #4a2a0c; color: #ffd9a8; font-weight: 600; }
+.ps-empty { margin: 40px 0; text-align: center; color: var(--muted); font-size: 20px; }
+
+/* products */
+.ps-groups { display: flex; flex-direction: column; gap: 26px; }
+.ps-cat {
+  margin: 0 0 12px; font-family: var(--heading); font-weight: 800; text-transform: uppercase;
+  font-size: 26px; letter-spacing: 0.03em; color: var(--muted);
+}
+.ps-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.ps-item {
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  padding: 16px 18px; border-radius: 18px; background: var(--tile);
+  border: 2px solid var(--line); border-left-width: 8px;
+}
+.ps-item.is-ok { border-left-color: var(--cyan); }
+.ps-item.is-low { border-left-color: var(--amber); }
+.ps-item.is-out { border-left-color: #64748b; opacity: 0.55; }
+.ps-item-name { font-weight: 700; font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
+.ps-item-qty { font-family: var(--heading); font-weight: 800; font-size: 54px; line-height: 1; font-variant-numeric: tabular-nums; }
+.ps-item.is-ok .ps-item-qty { color: var(--cyan); }
+.ps-item.is-low .ps-item-qty { color: var(--amber); }
+.ps-item.is-out .ps-item-qty { color: var(--muted); }
+.ps-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.ps-badge { padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.ps-badge.is-ok { background: #123f48; color: #9ddae5; }
+.ps-badge.is-low { background: #4a2f0c; color: #fbd29a; }
+.ps-badge.is-out { background: #2c3644; color: #cbd5e1; }
+.ps-price { font-weight: 700; font-size: 17px; }
+
+.ps-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; color: var(--muted); font-size: 14px; padding-top: 6px; }
+
+/* ---- Opening days ---- */
 /* header */
 .po-head { display: flex; align-items: center; gap: 24px; }
 .po-brand { display: flex; align-items: center; gap: 16px; flex: 1 1 auto; min-width: 0; }
@@ -100,15 +179,38 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
 .po-tag-today { background: var(--text); color: var(--ink); }
 
 .po-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; color: var(--muted); font-size: 14px; padding-top: 6px; }
-.po-link { font-weight: 700; }
+
+/* the screen in front of the café (?ecran): stock only, no tabs, bigger, no cursor */
+.ps-screen { max-width: none; padding: 28px 40px 40px; cursor: none; }
+.ps-screen .pc-tabs { display: none; }
+.ps-screen .ps-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.ps-screen .ps-item-name { font-size: 24px; }
+.ps-screen .ps-item-qty { font-size: 68px; }
+.ps-screen .ps-michel { width: 220px; }
 
 /* tablets: the week wraps to fewer columns */
 @media (max-width: 960px) {
   .po-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
-/* phones: one day per line */
+/* phones */
 @media (max-width: 640px) {
-  .po { padding: 16px 14px 24px; gap: 18px; }
+  .pc { padding: 16px 14px 24px; gap: 16px; }
+  .pc-tabs { align-self: stretch; }
+  .pc-tab { flex: 1 1 0; padding: 0 12px; font-size: 18px; }
+  .ps { gap: 16px; }
+  .po { gap: 18px; }
+  /* stock */
+  .ps-head { gap: 12px; }
+  .ps-logo { width: 44px; height: 50px; }
+  .ps-michel { display: none; }
+  .ps-clock { width: 100%; text-align: left; display: flex; align-items: baseline; gap: 10px; }
+  .ps-time { font-size: 26px; }
+  .ps-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ps-item { padding: 12px; border-radius: 14px; border-left-width: 6px; }
+  .ps-item-name { font-size: 16px; }
+  .ps-item-qty { font-size: 40px; }
+  .ps-cat { font-size: 22px; }
+  /* opening days: one day per line */
   .po-logo { width: 44px; height: 50px; }
   .po-michel { width: 76px; }
   .po-today { grid-template-columns: minmax(0, 1fr); padding: 16px; }
@@ -121,3 +223,5 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   .po-day-hours { font-size: 20px; }
   .po-week-title { font-size: 21px; }
 }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
