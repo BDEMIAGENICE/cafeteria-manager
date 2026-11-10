@@ -21,8 +21,14 @@ la même base Supabase que l'app. Adresse : `<adresse du site>/cafet/`.
 
 Montre quels jours la Cafet'MIAGE ouvre, et à quelle heure, sur les 4 prochaines semaines.
 
-- En haut, l'état du jour selon l'heure de Paris : « Ouvre à 12:15 », « Ouvert maintenant »,
-  « Service terminé » ou « Fermé », avec la prochaine ouverture.
+- En haut, le bandeau d'aujourd'hui, selon l'heure de Paris :
+  - jour d'ouverture, avant l'heure : un **compte à rebours** jusqu'à l'ouverture (« Ouvre dans
+    03:14:58 ») qui défile à la seconde ;
+  - pendant le service : un bandeau **vert**, « La cafet est ouverte actuellement », avec l'heure
+    de fermeture ;
+  - service fini : « Service terminé pour aujourd'hui » et le prochain jour d'ouverture ;
+  - jour fermé : « Fermé aujourd'hui » (ou « Fermé exceptionnellement »), avec un encadré bien
+    visible pour la **prochaine ouverture** (jour, horaire, « Demain » / « Dans 3 jours »).
 - Les fermetures et horaires exceptionnels saisis dans l'app (« Modifier ce jour ») sont signalés.
 - Actualisation toutes les 5 minutes (`opening.refreshSeconds`), sur `opening.days` jours
   (28 par défaut, 90 au plus).

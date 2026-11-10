@@ -39,10 +39,15 @@
           <img src="assets/michel-megaphone.webp" alt="" class="po-michel" width="160" height="180" />
         </header>
 
-        <section class="po-today" id="opening-today" aria-live="polite" hidden>
+        <section class="po-today" id="opening-today" hidden>
           <div class="po-today-label" data-i18n="opening.today">Aujourd'hui</div>
-          <div class="po-today-status" id="opening-today-status"></div>
-          <div class="po-today-detail" id="opening-today-detail"></div>
+          <div class="po-today-main">
+            <!-- only the status is announced (when the state changes), not the ticking countdown -->
+            <div class="po-today-status" id="opening-today-status" aria-live="polite"></div>
+            <div class="po-today-count" id="opening-today-count" role="timer" hidden></div>
+            <div class="po-today-detail" id="opening-today-detail"></div>
+            <div class="po-next" id="opening-next" hidden></div>
+          </div>
         </section>
 
         <p class="po-notice">

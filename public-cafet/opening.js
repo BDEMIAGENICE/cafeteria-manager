@@ -56,51 +56,102 @@
     return h ? h[0] + ' – ' + h[1] : label;
   };
 
-  // A time in Paris as "HH:MM", whatever the device's time zone or the page's language: it is
-  // compared with the opening hours as text, so it must always look like them.
+  // A time in Paris as "HH:MM", whatever the device's time zone or the page's language: it
+  // looks like the opening hours.
   function parisTimeOf(date) {
     return date.toLocaleTimeString('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   }
-  var parisClock = function () { return parisTimeOf(new Date()); };
+
+  // Seconds since midnight in Paris, to count down to the opening.
+  var parisHms = new Intl.DateTimeFormat('fr-FR', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+  function parisSeconds() {
+    var p = parisHms.format(new Date()).split(':');
+    return Number(p[0]) * 3600 + Number(p[1]) * 60 + Number(p[2]);
+  }
+  var toSeconds = function (hhmm) { return Number(hhmm.slice(0, 2)) * 3600 + Number(hhmm.slice(3, 5)) * 60; };
+  var two = function (n) { return n < 10 ? '0' + n : String(n); };
+  var countdown = function (sec) { return two(Math.floor(sec / 3600)) + ':' + two(Math.floor((sec % 3600) / 60)) + ':' + two(sec % 60); };
 
   function nextOpening(fromIndex) {
     for (var i = fromIndex; i < rows.length; i++) if (rows[i].open) return rows[i];
     return null;
   }
 
-  function renderToday() {
-    if (!rows || !rows.length) return;
-    var today = rows[0];
-    var box = el('opening-today');
+  // The banner for today. Four states:
+  //   is-soon   open day, before the opening: a countdown
+  //   is-open   open day, during the service: green
+  //   is-over   open day, service finished: a line saying so, and the next opening
+  //   is-closed closed day: "closed today", and the next opening, made prominent
+  // It is checked every second for the countdown, but only redrawn when something other than
+  // the countdown changes (state, language, new data).
+  var rowsVersion = 0; // bumped on each load
+  var drawn = '';
+
+  function drawNext(box, later, today) {
+    var gap = Math.round((asDate(later.date) - asDate(today.date)) / 86400000);
+    var meta = make('div', 'po-next-meta');
+    meta.append(make('span', 'po-next-hours', span(later.time_label)));
+    meta.append(make('span', 'po-next-in', gap === 1 ? t('opening.tomorrow') : t('opening.inDays', { n: gap })));
+    box.replaceChildren(make('div', 'po-next-label', t('opening.nextLabel')), make('div', 'po-next-day', cap(longDay(later.date))), meta);
+  }
+
+  function drawToday(state, today, h) {
     var status = el('opening-today-status');
+    var count = el('opening-today-count');
     var detail = el('opening-today-detail');
-    var now = parisClock();
-    var h = today.open ? hours(today.time_label) : null;
+    var next = el('opening-next');
     var later = nextOpening(1);
     var nextText = later
       ? t('opening.nextOpening', { day: longDay(later.date), hours: span(later.time_label) })
       : t('opening.noOpening', { days: days });
-    var state;
+    var detailText = '';
+    count.hidden = true;
+    next.hidden = true;
 
-    if (h && now < h[0]) {
-      state = 'is-soon';
-      status.textContent = t('opening.opensAt', { time: h[0] });
-      detail.textContent = t(today.special ? 'opening.todayFromToSpecial' : 'opening.todayFromTo', { from: h[0], to: h[1] });
-    } else if (h && now < h[1]) {
-      state = 'is-open';
+    if (state === 'is-soon') {
+      status.textContent = t('opening.opensIn');
+      count.hidden = false; // the digits are set by renderToday
+      detailText = t(today.special ? 'opening.todayFromToSpecial' : 'opening.todayFromTo', { from: h[0], to: h[1] });
+    } else if (state === 'is-open') {
       status.textContent = t('opening.openNow');
-      detail.textContent = t('opening.until', { time: h[1] });
-    } else if (h) {
-      state = 'is-closed';
+      detailText = t('opening.until', { time: h[1] });
+    } else if (state === 'is-over') {
       status.textContent = t('opening.over');
-      detail.textContent = nextText;
+      detailText = nextText;
     } else {
-      state = 'is-closed';
       status.textContent = t(today.special ? 'opening.closedSpecial' : 'opening.closedToday');
-      detail.textContent = nextText;
+      if (later) {
+        drawNext(next, later, today);
+        next.hidden = false;
+      } else {
+        detailText = nextText;
+      }
     }
-    box.className = 'po-today ' + state;
-    box.hidden = false;
+    detail.textContent = detailText;
+    detail.hidden = !detailText;
+    el('opening-today').className = 'po-today ' + state;
+    el('opening-today').hidden = false;
+  }
+
+  function renderToday() {
+    if (!rows || !rows.length) return;
+    var today = rows[0];
+    var h = today.open ? hours(today.time_label) : null;
+    var now = parisSeconds();
+    var openAt = h ? toSeconds(h[0]) : 0;
+    var closeAt = h ? toSeconds(h[1]) : 0;
+    var state = !h ? 'is-closed' : now < openAt ? 'is-soon' : now < closeAt ? 'is-open' : 'is-over';
+
+    var signature = [state, I18N.lang(), rowsVersion].join('|');
+    if (signature !== drawn) {
+      drawn = signature;
+      drawToday(state, today, h);
+    }
+    if (state === 'is-soon') {
+      var digits = countdown(openAt - now);
+      var count = el('opening-today-count');
+      if (count.textContent !== digits) count.textContent = digits;
+    }
   }
 
   function renderWeeks() {
@@ -194,6 +245,7 @@
       rows = Array.isArray(data) ? data : [];
       lastUpdate = new Date();
       failed = false;
+      rowsVersion += 1;
       renderWeeks();
       renderToday();
       renderMessages();
@@ -219,7 +271,7 @@
   renderMessages();
   load();
   setInterval(load, refreshMs);
-  setInterval(renderToday, 30000); // "opens at" turns into "open now" without a reload
+  setInterval(renderToday, 1000); // the countdown ticks, and "opens in" turns into "open now" without a reload
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') load();
   });
