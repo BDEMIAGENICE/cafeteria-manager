@@ -15,9 +15,15 @@
   </head>
   <body>
     <div class="pc" id="page">
-      <div class="pc-tabs" role="tablist" aria-label="Rubriques">
-        <button type="button" role="tab" class="pc-tab" id="tab-horaires" aria-controls="panel-horaires" aria-selected="true">Jours d'ouverture</button>
-        <button type="button" role="tab" class="pc-tab" id="tab-stock" aria-controls="panel-stock" aria-selected="false" tabindex="-1">Stock</button>
+      <div class="pc-bar">
+        <div class="pc-tabs" role="tablist" aria-label="Rubriques" data-i18n-label="tabs.label">
+          <button type="button" role="tab" class="pc-tab" id="tab-horaires" aria-controls="panel-horaires" aria-selected="true" data-i18n="tab.horaires">Jours d'ouverture</button>
+          <button type="button" role="tab" class="pc-tab" id="tab-stock" aria-controls="panel-stock" aria-selected="false" tabindex="-1" data-i18n="tab.stock">Stock</button>
+        </div>
+        <div class="pc-lang" role="group" aria-label="Langue" data-i18n-label="lang.label">
+          <button type="button" class="pc-lang-btn" data-lang="fr" lang="fr" aria-label="Français" aria-pressed="true">FR</button>
+          <button type="button" class="pc-lang-btn" data-lang="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
+        </div>
       </div>
 
       <!-- Jours d'ouverture -->
@@ -27,21 +33,26 @@
             <img src="assets/miage-logo.png" alt="" class="po-logo" width="56" height="64" />
             <div>
               <div class="po-name">Cafet'MIAGE</div>
-              <h1 class="po-title">Jours d'ouverture</h1>
+              <h1 class="po-title" data-i18n="opening.title">Jours d'ouverture</h1>
             </div>
           </div>
           <img src="assets/michel-megaphone.webp" alt="" class="po-michel" width="160" height="180" />
         </header>
 
-        <section class="po-today" id="opening-today" aria-live="polite" hidden>
-          <div class="po-today-label">Aujourd'hui</div>
-          <div class="po-today-status" id="opening-today-status"></div>
-          <div class="po-today-detail" id="opening-today-detail"></div>
+        <section class="po-today" id="opening-today" hidden>
+          <div class="po-today-label" data-i18n="opening.today">Aujourd'hui</div>
+          <div class="po-today-main">
+            <!-- only the status is announced (when the state changes), not the ticking countdown -->
+            <div class="po-today-status" id="opening-today-status" aria-live="polite"></div>
+            <div class="po-today-count" id="opening-today-count" role="timer" hidden></div>
+            <div class="po-today-detail" id="opening-today-detail"></div>
+            <div class="po-next" id="opening-next" hidden></div>
+          </div>
         </section>
 
         <p class="po-notice">
-          <strong>Les jours d'ouverture changent d'une semaine à l'autre.</strong>
-          Les semaines éloignées sont indicatives tant que l'équipe ne les a pas planifiées : jetez un œil à cette page avant de venir.
+          <strong data-i18n="opening.noticeLead">Les jours d'ouverture changent d'une semaine à l'autre.</strong>
+          <span data-i18n="opening.noticeBody">Les semaines éloignées sont indicatives tant que l'équipe ne les a pas planifiées : jetez un œil à cette page avant de venir.</span>
         </p>
 
         <p class="po-alert" id="opening-alert" role="status" hidden></p>
@@ -60,7 +71,7 @@
             <img src="assets/miage-logo.png" alt="" class="ps-logo" width="56" height="64" />
             <div>
               <div class="ps-name">Cafet'MIAGE</div>
-              <h1 class="ps-title">Stock du service</h1>
+              <h1 class="ps-title" data-i18n="stock.title">Stock du service</h1>
             </div>
           </div>
           <div class="ps-clock" aria-hidden="true">
@@ -71,8 +82,8 @@
         </header>
 
         <p class="ps-notice">
-          <strong>Ce n'est pas le stock en temps réel.</strong>
-          L'équipe le met à jour à la main au début de chaque service : en cours de service, il peut en rester moins que ce qui est affiché.
+          <strong data-i18n="stock.noticeLead">Ce n'est pas le stock en temps réel.</strong>
+          <span data-i18n="stock.noticeBody">L'équipe le met à jour à la main au début de chaque service : en cours de service, il peut en rester moins que ce qui est affiché.</span>
         </p>
         <p class="ps-summary" id="stock-summary" hidden></p>
         <p class="ps-alert" id="stock-alert" role="status" hidden></p>
@@ -86,6 +97,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="i18n.js"></script>
     <script src="tabs.js"></script>
     <script src="opening.js"></script>
     <script src="stock.js"></script>

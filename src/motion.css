@@ -1,0 +1,156 @@
+/* Motion: how the app moves. Loaded last, so it only adds to the other stylesheets.
+
+   - Things that appear (screens, lists, cards, dialogs) rise or pop in, one after the other.
+   - Things you touch (buttons, nav, cards, calendar days) answer: a lift on hover, a press on click.
+   - Michel floats; the numbers on the stock screen count up (CountUp.jsx).
+
+   Every entrance uses `backwards` fill, never `both` or `forwards`: once it has played, the
+   element is left with no animation, so hover effects work and nothing keeps a transform
+   (a transformed parent would also trap the position: fixed dialogs inside it).
+   People who ask their system for less motion get none of it, see the end of the file. */
+
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* visible to screen readers only: CountUp gives them the final value while the digits run */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.9); } }
+@keyframes dialog-pop { from { opacity: 0; transform: translateY(18px) scale(0.96); } }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes nav-in { from { opacity: 0; transform: translateX(-12px); } }
+@keyframes meter-grow { from { transform: scaleX(0); } }
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(-1.5deg); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-7deg) translateY(-3px); }
+  40% { transform: rotate(6deg); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(2deg); }
+}
+@keyframes ping {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 45%, transparent); }
+  to { box-shadow: 0 0 0 8px transparent; }
+}
+@keyframes loading-pulse { 50% { opacity: 0.35; } }
+
+/* ── Stagger: --d is how long an item waits, from its place among its siblings ───────── */
+:is(.screen-inner > *, .side-nav > *, .stat-grid > *, .import-stats > *, .shopping-list > li, .table tbody > tr, .stack.gap-3 > .row-card, .unavail-shift):nth-child(1) { --d: 0ms; }
+:is(.screen-inner > *, .side-nav > *, .stat-grid > *, .import-stats > *, .shopping-list > li, .table tbody > tr, .stack.gap-3 > .row-card, .unavail-shift):nth-child(2) { --d: 60ms; }
+:is(.screen-inner > *, .side-nav > *, .stat-grid > *, .import-stats > *, .shopping-list > li, .table tbody > tr, .stack.gap-3 > .row-card, .unavail-shift):nth-child(3) { --d: 120ms; }
+:is(.screen-inner > *, .side-nav > *, .stat-grid > *, .import-stats > *, .shopping-list > li, .table tbody > tr, .stack.gap-3 > .row-card, .unavail-shift):nth-child(4) { --d: 180ms; }
+:is(.screen-inner > *, .side-nav > *, .stat-grid > *, .import-stats > *, .shopping-list > li, .table tbody > tr, .stack.gap-3 > .row-card, .unavail-shift):nth-child(5) { --d: 240ms; }
+:is(.screen-inner > *, .side-nav > *, .stat-grid > *, .import-stats > *, .shopping-list > li, .table tbody > tr, .stack.gap-3 > .row-card, .unavail-shift):nth-child(6) { --d: 300ms; }
+:is(.screen-inner > *, .side-nav > *, .stat-grid > *, .import-stats > *, .shopping-list > li, .table tbody > tr, .stack.gap-3 > .row-card, .unavail-shift):nth-child(7) { --d: 360ms; }
+:is(.screen-inner > *, .side-nav > *, .stat-grid > *, .import-stats > *, .shopping-list > li, .table tbody > tr, .stack.gap-3 > .row-card, .unavail-shift):nth-child(n + 8) { --d: 420ms; }
+
+/* ── Things that appear ───────────────────────────────────────────────────────────────── */
+/* a screen: its blocks rise in turn (dialogs, which live in the same container, are left out) */
+.screen-inner > :not(.dialog-backdrop) { animation: rise 0.55s var(--ease-out) backwards; animation-delay: var(--d, 0ms); }
+.notice { animation: rise 0.4s var(--ease-out) backwards; }
+
+/* the menu comes in from the side, the logo pops */
+.nav-item { animation: nav-in 0.55s var(--ease-out) backwards; animation-delay: calc(var(--d, 0ms) + 120ms); }
+.brand-logo { animation: pop-in 0.6s var(--ease-spring) backwards; }
+
+/* stock figures: the cards pop in, and the numbers inside count up (CountUp.jsx) */
+.stat-grid > * { animation: pop-in 0.6s var(--ease-spring) backwards; animation-delay: calc(var(--d, 0ms) + 150ms); }
+.import-stats > * { animation: pop-in 0.5s var(--ease-spring) backwards; animation-delay: calc(var(--d, 0ms) + 80ms); }
+.stat-value, .import-stat-value, .shopping-qty-value { font-variant-numeric: tabular-nums; }
+
+/* tables and lists: row by row; the level bars fill up */
+.table tbody > tr { animation: rise 0.45s var(--ease-out) backwards; animation-delay: calc(var(--d, 0ms) + 250ms); }
+.meter > span { transform-origin: left center; animation: meter-grow 0.9s var(--ease-out) backwards; animation-delay: calc(var(--d, 0ms) + 450ms); }
+.stack.gap-3 > .row-card, .shopping-list > li, .unavail-shift { animation: rise 0.45s var(--ease-out) backwards; animation-delay: calc(var(--d, 0ms) + 100ms); }
+
+/* the calendar: week by week, day by day (the first seven children of a week are the day names) */
+.cal-week { --week: 0ms; }
+.cal-week:nth-child(n + 2) { --week: 300ms; }
+.cal-grid > :nth-child(8) { --day: 0ms; }
+.cal-grid > :nth-child(9) { --day: 40ms; }
+.cal-grid > :nth-child(10) { --day: 80ms; }
+.cal-grid > :nth-child(11) { --day: 120ms; }
+.cal-grid > :nth-child(12) { --day: 160ms; }
+.cal-grid > :nth-child(13) { --day: 200ms; }
+.cal-grid > :nth-child(14) { --day: 240ms; }
+.cal-grid > .cal-cell {
+  animation: pop-in 0.5s var(--ease-spring) backwards;
+  animation-delay: calc(150ms + var(--week) + var(--day, 0ms));
+}
+.cal-flag { animation: ping 2.2s ease-out infinite; }
+
+/* dialogs: a soft veil, then the dialog springs up; on a phone it slides up as a sheet */
+.dialog-backdrop { animation: fade-in 0.2s ease-out; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.dialog { animation: dialog-pop 0.34s var(--ease-spring); }
+@media (max-width: 800px) {
+  .dialog, .dialog-wide { animation: sheet-up 0.36s var(--ease-out); }
+}
+
+/* sign-in, and the wait for the first data */
+.login-card { animation: dialog-pop 0.6s var(--ease-spring) backwards; }
+.loading { animation: loading-pulse 1.4s ease-in-out infinite; }
+
+/* ── Michel ───────────────────────────────────────────────────────────────────────────── */
+.michel-head { transform-origin: 50% 90%; animation: bob 4.5s ease-in-out infinite; }
+.michel-head:hover { animation: wiggle 0.7s ease-in-out; }
+.michel-state, .michel-login {
+  transform-origin: 50% 90%;
+  animation: pop-in 0.6s var(--ease-spring) 0.1s backwards, bob 4.5s ease-in-out 0.7s infinite;
+}
+
+/* ── Things you touch ─────────────────────────────────────────────────────────────────── */
+.btn {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    box-shadow 0.2s ease, transform 0.15s var(--ease-out);
+}
+@media (hover: hover) {
+  .btn-primary:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 14px color-mix(in srgb, var(--color-accent) 28%, transparent); }
+  .btn-secondary:not(:disabled):hover { transform: translateY(-1px); }
+}
+.btn:not(:disabled):active { transform: scale(0.96); }
+
+.nav-item { transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s var(--ease-out); }
+.nav-item svg { transition: transform 0.3s var(--ease-spring); }
+.nav-item:active { transform: scale(0.97); }
+@media (hover: hover) and (min-width: 801px) {
+  .nav-item:hover { transform: translateX(4px); }
+  .nav-item:hover svg { transform: scale(1.15) rotate(-5deg); }
+}
+.brand:hover .brand-logo { animation: wiggle 0.7s ease-in-out; }
+
+.tab { transition: background-color 0.25s ease, color 0.25s ease, transform 0.15s var(--ease-out); }
+.tab:active { transform: scale(0.96); }
+.lang-opt, .seg-opt { transition: background-color 0.2s ease, color 0.2s ease; }
+
+.stat, .row-card { transition: box-shadow 0.25s ease, transform 0.25s var(--ease-out); }
+@media (hover: hover) {
+  .stat:hover, .row-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  button.cal-cell:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+}
+button.cal-cell { transition: border-color 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s var(--ease-out); }
+button.cal-cell:active { transform: scale(0.97); }
+.table tbody tr { transition: background-color 0.15s ease; }
+
+.input { transition: border-color 0.15s ease, box-shadow 0.2s ease; }
+.input:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+
+/* ── Less motion ──────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

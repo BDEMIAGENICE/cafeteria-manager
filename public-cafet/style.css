@@ -30,6 +30,9 @@
   --muted: #a7b4c4;
   --cyan: #3bb5cb;
   --amber: #f4a43a;
+  --green: #4ade80;
+  --green-bg: #11382a;
+  --green-line: #2b7a52;
   --heading: 'Barlow Condensed', system-ui, sans-serif;
   --body: 'Figtree', system-ui, sans-serif;
 }
@@ -45,20 +48,50 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
 /* a class that sets "display" must not keep a hidden element on screen */
 [hidden] { display: none !important; }
 
-/* page: the tabs, then the page of the selected tab */
-.pc { max-width: 1200px; margin: 0 auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 22px; }
+/* page: the tabs and the language, then the page of the selected tab.
+   overflow-x: clip keeps a tab that slides in from the side from scrolling the page sideways. */
+.pc { max-width: 1200px; margin: 0 auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 22px; overflow-x: clip; }
+.pc-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
 .pc-tabs {
-  display: flex; gap: 6px; align-self: flex-start; padding: 6px;
+  position: relative; display: flex; gap: 6px; padding: 6px;
   background: var(--tile); border: 2px solid var(--line); border-radius: 999px;
 }
 .pc-tab {
+  position: relative; z-index: 1;
   appearance: none; border: 0; background: transparent; color: var(--muted); cursor: pointer;
   min-height: 44px; padding: 0 24px; border-radius: 999px;
   font-family: var(--heading); font-weight: 800; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase;
+  transition: color 0.25s ease;
 }
 .pc-tab:hover { color: var(--text); }
 .pc-tab[aria-selected="true"] { background: var(--cyan); color: var(--ink); }
 .pc-tab:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+/* the pill that slides under the selected tab (tabs.js); until it is there, the tab paints itself */
+.pc-pill {
+  position: absolute; top: 0; left: 0; z-index: 0; width: 0; height: 0; border-radius: 999px;
+  background: var(--cyan); pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pc-pill.is-still { transition: none; }
+.pc-tabs.has-pill .pc-tab[aria-selected="true"] { background: transparent; }
+
+/* FR / EN */
+.pc-lang { display: flex; gap: 4px; padding: 4px; background: var(--tile); border: 2px solid var(--line); border-radius: 999px; }
+.pc-lang-btn {
+  appearance: none; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+  min-width: 44px; min-height: 36px; padding: 0 12px; border-radius: 999px;
+  font-family: var(--heading); font-weight: 800; font-size: 18px; letter-spacing: 0.06em;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+.pc-lang-btn:hover { color: var(--text); }
+.pc-lang-btn[aria-pressed="true"] { background: var(--text); color: var(--ink); }
+.pc-lang-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* a tab slides in from the side of its label while it fades in */
+@keyframes pc-in-right { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+@keyframes pc-in-left { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: none; } }
+.pc-in-right { animation: pc-in-right 0.38s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.pc-in-left { animation: pc-in-left 0.38s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .ps, .po { display: flex; flex-direction: column; min-width: 0; }
 .ps { gap: 20px; }
 .po { gap: 22px; }
@@ -106,6 +139,9 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   padding: 16px 18px; border-radius: 18px; background: var(--tile);
   border: 2px solid var(--line); border-left-width: 8px;
 }
+/* when the stock tab comes up (stock.js): the cards rise one after the other */
+.ps-item.is-entering { animation: ps-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms + 120ms); }
+@keyframes ps-rise { from { opacity: 0; transform: translateY(16px) scale(0.96); } }
 .ps-item.is-ok { border-left-color: var(--cyan); }
 .ps-item.is-low { border-left-color: var(--amber); }
 .ps-item.is-out { border-left-color: #64748b; opacity: 0.55; }
@@ -140,13 +176,46 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 4px 20px;
   padding: 20px 22px; border-radius: 18px; background: var(--tile); border: 2px solid var(--line); border-left-width: 10px;
 }
-.po-today.is-open { border-left-color: var(--cyan); }
+.po-today-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .po-today.is-soon { border-left-color: var(--cyan); }
-.po-today.is-closed { border-left-color: #64748b; }
-.po-today-label { grid-row: span 2; font-family: var(--heading); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-size: 18px; }
+.po-today.is-over, .po-today.is-closed { border-left-color: #64748b; }
+.po-today-label { font-family: var(--heading); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-size: 18px; }
 .po-today-status { font-family: var(--heading); font-weight: 800; text-transform: uppercase; font-size: clamp(28px, 3.6vw, 44px); line-height: 1.05; }
-.po-today.is-open .po-today-status, .po-today.is-soon .po-today-status { color: var(--cyan); }
 .po-today-detail { color: var(--text); font-size: 17px; }
+
+/* before the opening: the time left */
+.po-today.is-soon .po-today-status { color: var(--cyan); }
+.po-today-count {
+  font-family: var(--heading); font-weight: 800; font-size: clamp(52px, 8vw, 96px); line-height: 1;
+  letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--text);
+}
+
+/* during the service: green, with a pulsing dot */
+.po-today.is-open { background: var(--green-bg); border-color: var(--green-line); border-left-color: var(--green); }
+.po-today.is-open .po-today-label { color: #9fdcb9; }
+.po-today.is-open .po-today-status { color: var(--green); }
+.po-today.is-open .po-today-status::before {
+  content: ''; display: inline-block; width: 0.38em; height: 0.38em; margin-right: 0.45em; vertical-align: 0.08em;
+  border-radius: 50%; background: var(--green); animation: po-pulse 1.8s ease-out infinite;
+}
+@keyframes po-pulse {
+  from { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.65); }
+  to { box-shadow: 0 0 0 0.3em rgba(74, 222, 128, 0); }
+}
+
+/* service finished: a quieter line */
+.po-today.is-over .po-today-status { font-size: clamp(22px, 2.6vw, 30px); color: var(--muted); }
+
+/* closed day: the next opening, made prominent */
+.po-next {
+  align-self: flex-start; max-width: 100%; margin-top: 8px; padding: 14px 20px 16px; border-radius: 14px;
+  background: #13324a; border: 2px solid var(--cyan); display: flex; flex-direction: column; gap: 4px;
+}
+.po-next-label { font-family: var(--heading); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 17px; color: var(--cyan); }
+.po-next-day { font-family: var(--heading); font-weight: 800; text-transform: uppercase; font-size: clamp(30px, 4.4vw, 54px); line-height: 1.05; overflow-wrap: anywhere; }
+.po-next-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.po-next-hours { font-family: var(--heading); font-weight: 800; font-size: clamp(24px, 3vw, 32px); color: var(--cyan); font-variant-numeric: tabular-nums; }
+.po-next-in { padding: 3px 12px; border-radius: 999px; background: var(--cyan); color: var(--ink); font-size: 14px; font-weight: 700; }
 
 .po-notice { margin: 0; color: var(--muted); font-size: 15px; }
 .po-notice strong { color: var(--text); }
@@ -182,7 +251,7 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
 
 /* the screen in front of the café (?ecran): stock only, no tabs, bigger, no cursor */
 .ps-screen { max-width: none; padding: 28px 40px 40px; cursor: none; }
-.ps-screen .pc-tabs { display: none; }
+.ps-screen .pc-bar { display: none; }
 .ps-screen .ps-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
 .ps-screen .ps-item-name { font-size: 24px; }
 .ps-screen .ps-item-qty { font-size: 68px; }
@@ -195,7 +264,9 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
 /* phones */
 @media (max-width: 640px) {
   .pc { padding: 16px 14px 24px; gap: 16px; }
-  .pc-tabs { align-self: stretch; }
+  /* the language on its own line above the tabs, in both languages: the layout does not jump on a switch */
+  .pc-bar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 8px; }
+  .pc-lang { order: -1; align-self: flex-end; }
   .pc-tab { flex: 1 1 0; padding: 0 12px; font-size: 18px; }
   .ps { gap: 16px; }
   .po { gap: 18px; }
@@ -214,7 +285,8 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   .po-logo { width: 44px; height: 50px; }
   .po-michel { width: 76px; }
   .po-today { grid-template-columns: minmax(0, 1fr); padding: 16px; }
-  .po-today-label { grid-row: auto; font-size: 15px; }
+  .po-today-label { font-size: 15px; }
+  .po-next { align-self: stretch; padding: 12px 16px 14px; }
   .po-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .po-day { min-height: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px 14px; }
   .po-day.is-open { border-top-width: 2px; border-left: 6px solid var(--cyan); }
@@ -224,4 +296,10 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   .po-week-title { font-size: 21px; }
 }
 
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto; }
+  .pc-pill, .pc-tab, .pc-lang-btn { transition: none; }
+  .pc-in-right, .pc-in-left { animation: none; }
+  .po-today.is-open .po-today-status::before { animation: none; }
+  .ps-item.is-entering { animation: none; }
+}

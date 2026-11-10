@@ -4,9 +4,16 @@ Une seule page sans connexion, avec deux onglets : **Jours d'ouverture** et **St
 la même base Supabase que l'app. Adresse : `<adresse du site>/cafet/`.
 
 - Fichiers statiques, sans build ni dépendance : `index.html`, `style.css`, `config.js`, et un
-  script par partie (`tabs.js`, `opening.js`, `stock.js`).
+  script par partie (`i18n.js`, `tabs.js`, `opening.js`, `stock.js`).
 - L'onglet est dans l'adresse : `…/cafet/#horaires` et `…/cafet/#stock` ouvrent directement
   l'onglet voulu. Sans rien, la page s'ouvre sur les jours d'ouverture.
+- Changer d'onglet est animé : une pastille glisse sous l'onglet choisi et le contenu arrive
+  par le côté de l'onglet. Rien ne bouge si le système demande de réduire les animations.
+- La page est en français et en anglais. Les boutons **FR / EN**, en haut, changent la langue
+  (dates, heures, prix et messages compris). Le choix est gardé sur l'appareil ; à la première
+  visite, la page suit la langue du navigateur, sinon le français. L'écran `?ecran` reste en
+  français. Les noms de produits et de catégories viennent de la base et ne sont pas traduits.
+  Tous les textes sont dans `i18n.js` : pour modifier une phrase, c'est là.
 - Les anciennes adresses `…/horaires/` et `…/stock/` (y compris `…/stock/?ecran`) redirigent
   vers le bon onglet : les liens déjà partagés continuent de marcher.
 
@@ -14,8 +21,14 @@ la même base Supabase que l'app. Adresse : `<adresse du site>/cafet/`.
 
 Montre quels jours la Cafet'MIAGE ouvre, et à quelle heure, sur les 4 prochaines semaines.
 
-- En haut, l'état du jour selon l'heure de Paris : « Ouvre à 12:15 », « Ouvert maintenant »,
-  « Service terminé » ou « Fermé », avec la prochaine ouverture.
+- En haut, le bandeau d'aujourd'hui, selon l'heure de Paris :
+  - jour d'ouverture, avant l'heure : un **compte à rebours** jusqu'à l'ouverture (« Ouvre dans
+    03:14:58 ») qui défile à la seconde ;
+  - pendant le service : un bandeau **vert**, « La cafet est ouverte actuellement », avec l'heure
+    de fermeture ;
+  - service fini : « Service terminé pour aujourd'hui » et le prochain jour d'ouverture ;
+  - jour fermé : « Fermé aujourd'hui » (ou « Fermé exceptionnellement »), avec un encadré bien
+    visible pour la **prochaine ouverture** (jour, horaire, « Demain » / « Dans 3 jours »).
 - Les fermetures et horaires exceptionnels saisis dans l'app (« Modifier ce jour ») sont signalés.
 - Actualisation toutes les 5 minutes (`opening.refreshSeconds`), sur `opening.days` jours
   (28 par défaut, 90 au plus).
@@ -31,6 +44,11 @@ sort de l'ordinaire. Rien sur l'équipe ni sur les inscriptions.
 ## Onglet « Stock »
 
 Affiche le stock de la Cafet'MIAGE, pour les étudiants et pour l'écran devant la cafet.
+
+Quand on arrive sur l'onglet, les cartes montent l'une après l'autre et chaque quantité **compte
+depuis 0** jusqu'à sa vraie valeur. Ça ne se joue qu'à l'arrivée sur l'onglet : les rechargements
+de 30 secondes et le changement de langue remplacent les chiffres sans rejouer l'animation.
+Rien ne bouge si le système demande de réduire les animations.
 
 **Ce n'est pas un stock en temps réel** : l'équipe le met à jour à la main, au début de chaque
 service (depuis l'écran Stock de l'app). L'onglet le dit en haut, en toutes lettres.

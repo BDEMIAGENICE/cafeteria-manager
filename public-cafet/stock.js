@@ -8,21 +8,29 @@
 
   var site = window.PUBLIC_CONFIG || {};
   var config = site.stock || {};
+  var I18N = window.CafetI18n;
+  var t = I18N.t;
   var refreshMs = (config.refreshSeconds || 30) * 1000;
   var screenMode = new URLSearchParams(window.location.search).has('ecran');
-  var LABELS = { ok: 'Disponible', low: 'Bientôt épuisé', out: 'Épuisé' };
-  var PLURALS = { ok: 'disponibles', low: 'bientôt épuisés', out: 'épuisés' };
   var RANK = { ok: 0, low: 1, out: 2 };
 
   var el = function (id) { return document.getElementById(id); };
+  var items = null; // the last stock received
   var lastUpdate = null;
+  var emptyKey = 'loading'; // what #stock-empty says while it is shown
+  var failed = false; // the last load failed
 
   if (screenMode) document.getElementById('page').classList.add('ps-screen');
 
-  var qty = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
-  var eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+  // Numbers and prices follow the page's language ("2,50 €" / "€2.50").
+  var qty, eur;
+  function setFormats() {
+    qty = new Intl.NumberFormat(I18N.locale(), { maximumFractionDigits: 1 });
+    eur = new Intl.NumberFormat(I18N.locale(), { style: 'currency', currency: 'EUR' });
+  }
+  setFormats();
   var clock = function (d, seconds) {
-    return d.toLocaleTimeString('fr-FR', {
+    return d.toLocaleTimeString(I18N.locale(), {
       hour: '2-digit', minute: '2-digit', second: seconds ? '2-digit' : undefined, hourCycle: 'h23',
     });
   };
@@ -35,12 +43,59 @@
     return node;
   }
 
-  function render(items) {
+  // ---- Entrance: when the tab comes up, the cards rise one after the other and each quantity
+  // counts up from 0 to its real value. Only on arrival: the 30-second refreshes and the
+  // language switch redraw the numbers in place, without replaying it.
+  var motionOk = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var entrancePending = true; // the next time the cards are on screen
+  var entranceRun = 0; // a new run stops the previous one
+
+  function countUp(node, target, delay, run) {
+    var duration = 900;
+    var whole = Math.floor(target) === target;
+    var started = null;
+    node.textContent = qty.format(0);
+    function step(now) {
+      if (run !== entranceRun || !node.isConnected) return;
+      if (started === null) started = now;
+      var progress = Math.min(1, Math.max(0, (now - started - delay) / duration));
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var value = target * eased;
+      node.textContent = qty.format(progress === 1 ? target : whole ? Math.round(value) : Math.round(value * 10) / 10);
+      if (progress < 1) window.requestAnimationFrame(step);
+    }
+    window.requestAnimationFrame(step);
+  }
+
+  function playEntrance() {
+    if (!entrancePending || !items || el('panel-stock').hidden) return;
+    entrancePending = false;
+    if (!motionOk) return;
+    var run = ++entranceRun;
+    el('stock-groups').querySelectorAll('.ps-item').forEach(function (card, index) {
+      var delay = 120 + Math.min(index, 16) * 45;
+      card.style.setProperty('--i', Math.min(index, 16));
+      card.classList.remove('is-entering');
+      void card.offsetWidth; // restart the animation
+      card.classList.add('is-entering');
+      var value = card.querySelector('.ps-item-qty');
+      var target = Number(value.getAttribute('data-value'));
+      if (target > 0) countUp(value, target, delay, run);
+    });
+  }
+
+  document.addEventListener('cafet:tabshown', function (e) {
+    if (e.detail !== 'stock') return;
+    entrancePending = true;
+    playEntrance();
+  });
+
+  function render() {
     var groups = el('stock-groups');
     groups.replaceChildren();
 
     el('stock-empty').hidden = items.length > 0;
-    if (!items.length) el('stock-empty').textContent = 'Aucun produit pour le moment.';
+    if (!items.length) emptyKey = 'stock.none';
 
     var count = { ok: 0, low: 0, out: 0 };
     items.forEach(function (i) { count[i.status] += 1; });
@@ -49,7 +104,7 @@
     summary.replaceChildren();
     ['ok', 'low', 'out'].forEach(function (s) {
       var part = make('span', 'ps-count');
-      part.append(make('span', 'ps-dot is-' + s), document.createTextNode(count[s] + ' ' + (count[s] > 1 ? PLURALS[s] : LABELS[s].toLowerCase())));
+      part.append(make('span', 'ps-dot is-' + s), document.createTextNode(I18N.count('stock.count.' + s, count[s])));
       summary.append(part);
     });
 
@@ -64,17 +119,20 @@
 
     byCat.forEach(function (list, category) {
       var section = make('section', 'ps-group');
-      if (headings) section.append(make('h2', 'ps-cat', category || 'Autres'));
+      if (headings) section.append(make('h2', 'ps-cat', category || t('stock.other')));
       var grid = make('ul', 'ps-grid');
       list
         .slice()
+        // product names are French, whatever the page's language: the order does not move on a switch
         .sort(function (a, b) { return RANK[a.status] - RANK[b.status] || a.name.localeCompare(b.name, 'fr'); })
         .forEach(function (i) {
           var li = make('li', 'ps-item is-' + i.status);
           li.append(make('span', 'ps-item-name', i.name));
-          li.append(make('span', 'ps-item-qty', i.status === 'out' ? '0' : qty.format(i.quantity)));
+          var quantity = make('span', 'ps-item-qty', i.status === 'out' ? '0' : qty.format(i.quantity));
+          if (i.status !== 'out') quantity.setAttribute('data-value', Number(i.quantity));
+          li.append(quantity);
           var foot = make('span', 'ps-item-foot');
-          foot.append(make('span', 'ps-badge is-' + i.status, LABELS[i.status]));
+          foot.append(make('span', 'ps-badge is-' + i.status, t('stock.status.' + i.status)));
           if (i.price != null) foot.append(make('span', 'ps-price', eur.format(i.price)));
           li.append(foot);
           grid.append(li);
@@ -82,15 +140,29 @@
       section.append(grid);
       groups.append(section);
     });
+    playEntrance();
+  }
+
+  // The messages around the list: what they say depends on the state and on the language.
+  function renderMessages() {
+    el('stock-empty').textContent = t(emptyKey);
+    var alert = el('stock-alert');
+    alert.hidden = !failed;
+    if (failed) {
+      alert.textContent = lastUpdate
+        ? t('stock.lostConnection', { time: clock(lastUpdate) })
+        : t('stock.unavailable');
+    }
+    // This is when the page was reloaded, not when the stock was counted: say so.
+    el('stock-foot').textContent = lastUpdate
+      ? t('stock.footUpdated', { time: clock(lastUpdate, true) })
+      : t('stock.footDefault');
   }
 
   function showError() {
-    var alert = el('stock-alert');
-    alert.hidden = false;
-    alert.textContent = lastUpdate
-      ? 'Connexion perdue : dernier chargement à ' + clock(lastUpdate) + '. Nouvel essai automatique.'
-      : 'Le stock ne peut pas être affiché pour le moment. Nouvel essai automatique.';
+    failed = true;
     if (!lastUpdate) el('stock-empty').hidden = true;
+    renderMessages();
   }
 
   var loading = false;
@@ -105,13 +177,12 @@
         cache: 'no-store',
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      var items = await res.json();
-      render(Array.isArray(items) ? items : []);
+      var received = await res.json();
+      items = Array.isArray(received) ? received : [];
       lastUpdate = new Date();
-      el('stock-alert').hidden = true;
-      // This is when the page was reloaded, not when the stock was counted: say so.
-      el('stock-foot').textContent =
-        'Page rechargée à ' + clock(lastUpdate, true) + ' · le stock, lui, est mis à jour à la main en début de service';
+      failed = false;
+      render();
+      renderMessages();
     } catch (e) {
       showError();
     } finally {
@@ -122,7 +193,7 @@
   function tick() {
     var now = new Date();
     el('stock-time').textContent = clock(now);
-    var date = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    var date = now.toLocaleDateString(I18N.locale(), { weekday: 'long', day: 'numeric', month: 'long' });
     el('stock-date').textContent = date.charAt(0).toUpperCase() + date.slice(1);
   }
 
@@ -150,11 +221,21 @@
     }, STEP_MS);
   }
 
+  // Switching language redraws everything that is text.
+  I18N.onChange(function () {
+    setFormats();
+    if (items) render();
+    renderMessages();
+    tick();
+  });
+
   if (!site.supabaseUrl || !site.publishableKey || /COLLER_ICI|VOTRE-PROJET/.test(site.supabaseUrl + site.publishableKey)) {
-    el('stock-empty').textContent = 'Page pas encore configurée : renseignez la clé dans config.js.';
+    emptyKey = 'unconfigured';
+    renderMessages();
     return;
   }
 
+  renderMessages();
   tick();
   setInterval(tick, 1000);
   load();
