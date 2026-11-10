@@ -139,6 +139,9 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   padding: 16px 18px; border-radius: 18px; background: var(--tile);
   border: 2px solid var(--line); border-left-width: 8px;
 }
+/* when the stock tab comes up (stock.js): the cards rise one after the other */
+.ps-item.is-entering { animation: ps-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms + 120ms); }
+@keyframes ps-rise { from { opacity: 0; transform: translateY(16px) scale(0.96); } }
 .ps-item.is-ok { border-left-color: var(--cyan); }
 .ps-item.is-low { border-left-color: var(--amber); }
 .ps-item.is-out { border-left-color: #64748b; opacity: 0.55; }
@@ -298,4 +301,5 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   .pc-pill, .pc-tab, .pc-lang-btn { transition: none; }
   .pc-in-right, .pc-in-left { animation: none; }
   .po-today.is-open .po-today-status::before { animation: none; }
+  .ps-item.is-entering { animation: none; }
 }

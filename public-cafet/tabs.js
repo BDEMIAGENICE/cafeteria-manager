@@ -62,6 +62,8 @@
       panel(t).hidden = !on;
     });
     document.title = I18N.t('title.' + id);
+    // The other scripts play their own entrance when their tab comes up (the stock counts up).
+    if (previous !== id) document.dispatchEvent(new CustomEvent('cafet:tabshown', { detail: id }));
     var changed = Boolean(options.animate && previous && previous !== id);
     movePill(changed);
     if (changed && !reducedMotion.matches) slideIn(id, previous);

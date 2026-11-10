@@ -29,7 +29,11 @@ For a given date the schedule uses, in this order: the date's own exception (**E
 
 `/cafet/#horaires` and `/cafet/#stock` open a tab directly, and `/cafet/?ecran` is the stock-only screen for in front of the café. The earlier addresses `/horaires/` and `/stock/` redirect to the matching tab.
 
-The page is in French and English (FR / EN buttons at the top; the choice is kept on the device, and a first visit follows the browser's language). Texts live in `public-cafet/i18n.js`. The screen in front of the café stays in French. Switching tab is animated, unless the system asks for reduced motion.
+The page is in French and English (FR / EN buttons at the top; the choice is kept on the device, and a first visit follows the browser's language). Texts live in `public-cafet/i18n.js`. The screen in front of the café stays in French. Switching tab is animated, and when the stock tab comes up its cards rise one after the other while each quantity counts up from 0 (only on arrival, not on the 30-second refreshes). All of it is off when the system asks for reduced motion.
+
+## Animations (app)
+
+`src/motion.css` holds all the motion of the app, loaded last so it only adds to the other stylesheets: screens, lists, calendar days and dialogs come in one after the other, buttons and cards answer on hover and press, Michel floats. The figures of the stock screen count up with `src/CountUp.jsx`. Entrances use `animation-fill-mode: backwards` on purpose, so nothing keeps a transform once it has played (hover effects keep working, and the `position: fixed` dialogs are not trapped in a transformed parent). Everything is off under `prefers-reduced-motion`.
 
 ## Deploy
 
