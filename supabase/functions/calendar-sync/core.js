@@ -63,15 +63,32 @@ export function occurrenceOn(date, label, tz) {
 // How many days the schedule shows, from today: two weeks, so people can plan ahead.
 export const HORIZON_DAYS = 14;
 
+// The Monday of the week containing `date` ({ y, m, d }), as { y, m, d }. Weeks run
+// Monday to Sunday, and a week is identified by its Monday.
+export function weekStart({ y, m, d }) {
+  const back = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() || 7) - 1;
+  const monday = new Date(Date.UTC(y, m - 1, d - back));
+  return { y: monday.getUTCFullYear(), m: monday.getUTCMonth() + 1, d: monday.getUTCDate() };
+}
+
 // The services of the `count` days starting at `from` ({ y, m, d }): at most one a day.
-// `weekly` holds the usual hours, one row per ISO weekday (1 = Monday … 7 = Sunday):
-// [{ weekday, time_label, needed }]. `overrides` holds exceptions for single dates:
-// [{ date: 'YYYY-MM-DD', closed, time_label, needed }], where a null time or count falls
-// back to the usual one. A date is open when it has a time from either source and isn't
-// closed. Days with no service are left out, except closed exceptions, which are kept
-// (closed: true) so the schedule can say the day is shut.
-export function servicesFrom(weekly, overrides, from, count) {
+//
+// Which days a week opens, and when, comes from the first of these that exists:
+//   1. the week's own plan, in `weeks`: [{ week_start: 'YYYY-MM-DD' (its Monday),
+//      days: [{ weekday, time_label, needed }] }], the days listed being the open ones
+//      (an empty list is a week that is shut);
+//   2. the usual hours, in `weekly`: one row per ISO weekday (1 = Monday … 7 = Sunday),
+//      [{ weekday, time_label, needed }], for every week that has no plan of its own.
+// `overrides` then holds exceptions for single dates: [{ date: 'YYYY-MM-DD', closed,
+// time_label, needed }], where a null time or count falls back to the week's. A date is
+// open when it has a time from either source and isn't closed. Days with no service are
+// left out, except closed exceptions, which are kept (closed: true) so the schedule can
+// say the day is shut.
+export function servicesFrom(weekly, overrides, from, count, weeks = []) {
   const usual = new Map(weekly.map((w) => [Number(w.weekday), w]));
+  const plans = new Map(
+    weeks.map((w) => [String(w.week_start), new Map((Array.isArray(w.days) ? w.days : []).map((x) => [Number(x.weekday), x]))]),
+  );
   const exceptions = new Map(overrides.map((o) => [String(o.date), o]));
   const out = [];
   for (let i = 0; i < count; i++) {
@@ -79,7 +96,7 @@ export function servicesFrom(weekly, overrides, from, count) {
     const date = { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
     const key = dateKey(date);
     const weekday = d.getUTCDay() || 7;
-    const w = usual.get(weekday);
+    const w = (plans.get(dateKey(weekStart(date))) ?? usual).get(weekday);
     const o = exceptions.get(key);
     if (o?.closed) {
       out.push({ key, date, weekday, closed: true, exception: true });

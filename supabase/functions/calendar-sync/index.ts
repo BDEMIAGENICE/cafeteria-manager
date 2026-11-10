@@ -5,7 +5,7 @@
 import ICAL from 'npm:ical.js@2.1.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { buildFeed, busyIntervals, overlapDetails, overlaps } from './core.js';
-import { dateKey, occurrenceOn, parseDateKey, servicesFrom, todayIn, HORIZON_DAYS } from './core.js';
+import { dateKey, occurrenceOn, parseDateKey, servicesFrom, todayIn, weekStart, HORIZON_DAYS } from './core.js';
 import { localDayBounds } from './core.js';
 
 const TZ = 'Europe/Paris';
@@ -82,7 +82,7 @@ async function serveFeed(req: Request) {
   const todayStr = dateKey(todayIn(TZ, now));
 
   // Days this member is placed on, from today on. The service of each date is its
-  // exception if it has one, else its weekday's usual hours.
+  // exception if it has one, else its week's plan, else its weekday's usual hours.
   const { data: mine } = await db
     .from('service_assignments').select('date').eq('staff_id', row.staff_id).gte('date', todayStr).order('date');
   const dates = (mine ?? []).map((m) => m.date as string);
@@ -90,13 +90,15 @@ async function serveFeed(req: Request) {
   const services = new Map<string, { time: string; weekday: number }>();
   const colleagues = new Map<string, string[]>();
   if (dates.length) {
-    const [{ data: weekly }, { data: exceptions }, { data: all }] = await Promise.all([
+    const [{ data: weekly }, { data: weeks }, { data: exceptions }, { data: all }] = await Promise.all([
       db.from('opening_hours').select('weekday, time_label, needed'),
+      db.from('service_weeks').select('week_start, days')
+        .gte('week_start', dateKey(weekStart(parseDateKey(todayStr)))).lte('week_start', last),
       db.from('service_days').select('date, closed, time_label, needed').gte('date', todayStr).lte('date', last),
       db.from('service_assignments').select('date, staff_id').in('date', dates),
     ]);
     const span = Math.round((Date.parse(last) - Date.parse(todayStr)) / 86_400_000) + 1;
-    for (const sv of servicesFrom(weekly ?? [], exceptions ?? [], parseDateKey(todayStr), span)) {
+    for (const sv of servicesFrom(weekly ?? [], exceptions ?? [], parseDateKey(todayStr), span, weeks ?? [])) {
       if (!sv.closed) services.set(sv.key, { time: sv.time, weekday: sv.weekday });
     }
     // Colleagues on the same date, for the event description.
@@ -170,12 +172,16 @@ Deno.serve(async (req) => {
     // The services the schedule shows: one a day at most, identified by its date.
     const today = todayIn(TZ, now);
     const end = new Date(Date.UTC(today.y, today.m - 1, today.d + HORIZON_DAYS - 1));
-    const [{ data: weekly }, { data: exceptions }] = await Promise.all([
+    const lastDay = end.toISOString().slice(0, 10);
+    const [{ data: weekly }, { data: weeks }, { data: exceptions }] = await Promise.all([
       db.from('opening_hours').select('weekday, time_label, needed'),
+      // a week is identified by its Monday, which may be before today
+      db.from('service_weeks').select('week_start, days')
+        .gte('week_start', dateKey(weekStart(today))).lte('week_start', lastDay),
       db.from('service_days').select('date, closed, time_label, needed')
-        .gte('date', dateKey(today)).lte('date', end.toISOString().slice(0, 10)),
+        .gte('date', dateKey(today)).lte('date', lastDay),
     ]);
-    const occurrences = servicesFrom(weekly ?? [], exceptions ?? [], today, HORIZON_DAYS)
+    const occurrences = servicesFrom(weekly ?? [], exceptions ?? [], today, HORIZON_DAYS, weeks ?? [])
       .filter((sv) => !sv.closed)
       .map((sv) => ({ date: sv.key, occ: occurrenceOn(sv.date, sv.time, TZ) }))
       .filter((x) => x.occ);

@@ -87,7 +87,7 @@
     var alert = el('alert');
     alert.hidden = false;
     alert.textContent = lastUpdate
-      ? 'Connexion perdue : stock affiché de ' + clock(lastUpdate) + '. Nouvel essai automatique.'
+      ? 'Connexion perdue : dernier chargement à ' + clock(lastUpdate) + '. Nouvel essai automatique.'
       : 'Le stock ne peut pas être affiché pour le moment. Nouvel essai automatique.';
     if (!lastUpdate) el('empty').hidden = true;
   }
@@ -108,8 +108,9 @@
       render(Array.isArray(items) ? items : []);
       lastUpdate = new Date();
       el('alert').hidden = true;
+      // This is when the page was reloaded, not when the stock was counted: say so.
       el('foot').textContent =
-        'Page actualisée à ' + clock(lastUpdate, true) + ' · actualisation automatique toutes les ' + refreshMs / 1000 + ' secondes';
+        'Page rechargée à ' + clock(lastUpdate, true) + ' · le stock, lui, est mis à jour à la main en début de service';
     } catch (e) {
       showError();
     } finally {

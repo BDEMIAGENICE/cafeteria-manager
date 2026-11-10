@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Dialog from '../Dialog.jsx';
 import { WEEKDAYS } from '../api.js';
 import { useT } from '../i18n.jsx';
-import { formatDay, todayKey, parseDateKey, dateKey } from '../dates.js';
+import { formatDay, todayKey, parseDateKey, dateKey, servicesFrom } from '../dates.js';
 import Unavailable from './Unavailable.jsx';
 import Michel from '../Michel.jsx';
 
@@ -13,32 +13,83 @@ const splitTime = (label) => {
 };
 const joinTime = (start, end) => `${start}–${end}`;
 
-// One service a day at most, identified by its date. The usual hours come from the
-// weekday; an admin can close a single date or give it other hours.
-export default function Schedule({ days, range, page, loadedPage, onPage, weekly, staff, me, isAdmin, actions }) {
+// "9 Nov" / "9 nov." (with the year when asked).
+const shortDate = (date, lang, withYear) =>
+  new Date(Date.UTC(date.y, date.m - 1, date.d)).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    ...(withYear && { year: 'numeric' }),
+    timeZone: 'UTC',
+  });
+
+// What a form of seven weekday rows (the usual hours, or one week's plan) holds: the open
+// days as [{ weekday, time_label, needed }], or the error to show.
+function readWeek(d, t) {
+  const rows = [];
+  for (let i = 0; i < 7; i++) {
+    const weekday = i + 1;
+    if (!d.get(`open-${weekday}`)) continue;
+    const start = d.get(`start-${weekday}`);
+    const end = d.get(`end-${weekday}`);
+    if (!start || !end || end <= start) {
+      return { error: t('{day}: the shift must end after it starts.', { day: t(WEEKDAYS[i]) }) };
+    }
+    rows.push({ weekday, time_label: joinTime(start, end), needed: Number(d.get(`needed-${weekday}`)) || 1 });
+  }
+  return { rows };
+}
+
+// One service a day at most, identified by its date. Each week has its own days: the plan an
+// admin gave it, or the usual hours when it has none. An admin can also close a single date
+// or give it other hours.
+export default function Schedule({ days, range, page, loadedPage, onPage, weekly, weeks, exceptions, staff, me, isAdmin, actions }) {
   const { t, lang } = useT();
   const [assigning, setAssigning] = useState(null); // a day
   const [editingDay, setEditingDay] = useState(null); // { day, closed, start, end, needed }
-  const [editingWeek, setEditingWeek] = useState(false);
+  const [editingWeek, setEditingWeek] = useState(false); // the usual hours
+  const [planning, setPlanning] = useState(null); // a week of the page, being planned
   const [formError, setFormError] = useState(null);
   const [showUnavailable, setShowUnavailable] = useState(false);
   const [selected, setSelected] = useState(null); // date key of the day shown in detail
 
   const nameOf = new Map(staff.map((m) => [m.id, m.name]));
   const usualOf = (weekday) => weekly.find((w) => w.weekday === weekday);
+  // What the week of a day plans for it: its own plan, or the usual hours when it has none.
+  const baseOf = (day) => {
+    const week = weeks.find((w) => day.key >= w.key && day.key <= w.end);
+    return (week?.plan ?? weekly).find((r) => r.weekday === day.weekday);
+  };
   // The unavailable-people popup only makes sense where calendar hints exist.
   const hasHints = days.some((d) => d.service && d.hints);
 
   const openDay = (day) => {
     setSelected(null);
     setFormError(null);
-    const usual = usualOf(day.weekday);
-    const [start, end] = splitTime(day.service?.time ?? usual?.time_label);
-    setEditingDay({ day, closed: day.closed, start, end, needed: day.service?.needed ?? usual?.needed ?? 2 });
+    const planned = baseOf(day);
+    const [start, end] = splitTime(day.service?.time ?? planned?.time_label);
+    setEditingDay({ day, closed: day.closed, start, end, needed: day.service?.needed ?? planned?.needed ?? 2 });
   };
   const openWeek = () => {
     setFormError(null);
     setEditingWeek(true);
+  };
+  const openPlan = (week) => {
+    setFormError(null);
+    setPlanning(week);
+  };
+  // How many people are placed on days of `week` that would no longer be open if its plan
+  // became `plan` (a list of open days, or null for the usual hours).
+  const confirmLoss = (lost) =>
+    !lost || window.confirm(t('{n} people are placed on days this plan no longer opens. Continue anyway? They are placed again if those days reopen.', { n: lost }));
+  const placedLost = (week, plan) => {
+    const stays = new Set(
+      servicesFrom(weekly, exceptions, week.start, 7, plan ? [{ week_start: week.key, days: plan }] : [])
+        .filter((s) => !s.closed)
+        .map((s) => s.key),
+    );
+    return days
+      .filter((d) => d.key >= week.key && d.key <= week.end && d.service && !stays.has(d.key))
+      .reduce((n, d) => n + d.service.assigned.length, 0);
   };
 
   return (
@@ -64,10 +115,12 @@ export default function Schedule({ days, range, page, loadedPage, onPage, weekly
         </div>
       </div>
 
-      {weekly.length === 0 && (
+      {weekly.length === 0 && !days.some((d) => d.service || d.closed) && (
         <div className="card elev-sm" style={{ padding: 'var(--space-6)' }}>
           <p className="text-muted" style={{ margin: 0 }}>
-            {isAdmin ? t('No opening hours yet. Set the usual hours first.') : t('No shifts have been planned yet.')}
+            {isAdmin
+              ? t('Nothing is planned yet. Plan a week from the calendar, or set the usual hours.')
+              : t('No shifts have been planned yet.')}
           </p>
         </div>
       )}
@@ -75,6 +128,9 @@ export default function Schedule({ days, range, page, loadedPage, onPage, weekly
       <Calendar
         days={days}
         range={range}
+        weeks={weeks}
+        hasUsual={weekly.length > 0}
+        onPlan={openPlan}
         page={page}
         loading={page !== loadedPage}
         onPage={onPage}
@@ -162,10 +218,10 @@ export default function Schedule({ days, range, page, loadedPage, onPage, weekly
             }
             const time = joinTime(start, end);
             const needed = Number(d.get('needed'));
-            const usual = usualOf(day.weekday);
+            const planned = baseOf(day);
             setEditingDay(null);
-            // Same as the usual hours: no exception to keep for this date.
-            if (usual && joinTime(...splitTime(usual.time_label)) === time && usual.needed === needed) {
+            // Same as what its week plans: no exception to keep for this date.
+            if (planned && joinTime(...splitTime(planned.time_label)) === time && planned.needed === needed) {
               if (day.exception) await actions.clearServiceDay(day.key);
               return;
             }
@@ -173,7 +229,7 @@ export default function Schedule({ days, range, page, loadedPage, onPage, weekly
           }}
         >
           <p className="text-muted" style={{ margin: 0 }}>
-            {t('Changes apply to this date only. The usual hours are set with “Usual hours”.')}
+            {t('Changes apply to this date only. The days a week opens are set with “Plan this week”.')}
           </p>
           <label className="dialog-check">
             <input
@@ -222,7 +278,7 @@ export default function Schedule({ days, range, page, loadedPage, onPage, weekly
                 actions.clearServiceDay(day.key);
               }}
             >
-              {t('Back to the usual hours')}
+              {t('Back to the planned hours')}
             </button>
           )}
         </Dialog>
@@ -235,31 +291,66 @@ export default function Schedule({ days, range, page, loadedPage, onPage, weekly
           wide
           onClose={() => setEditingWeek(false)}
           onSubmit={async (d) => {
-            const rows = [];
-            for (let i = 0; i < 7; i++) {
-              const weekday = i + 1;
-              if (!d.get(`open-${weekday}`)) continue;
-              const start = d.get(`start-${weekday}`);
-              const end = d.get(`end-${weekday}`);
-              if (!start || !end || end <= start) {
-                setFormError(t('{day}: the shift must end after it starts.', { day: t(WEEKDAYS[i]) }));
-                return;
-              }
-              rows.push({ weekday, time_label: joinTime(start, end), needed: Number(d.get(`needed-${weekday}`)) || 1 });
+            const { rows, error } = readWeek(d, t);
+            if (error) {
+              setFormError(error);
+              return;
             }
             setEditingWeek(false);
             await actions.setOpeningHours(rows);
           }}
         >
           <p className="text-muted" style={{ margin: 0 }}>
-            {t('One shift a day at most. These hours apply to every week; a single date can still be closed or changed from its card.')}
+            {t('One shift a day at most. These are the hours of every week that has no plan of its own: plan a week from the calendar to open other days.')}
           </p>
-          <div className="week-hours">
-            {WEEKDAYS.map((name, i) => (
-              <WeekdayRow key={name} weekday={i + 1} name={t(name)} usual={usualOf(i + 1)} t={t} />
-            ))}
-          </div>
+          <WeekRows rows={weekly} t={t} />
           {formError && <div role="alert" style={{ color: 'var(--color-danger)', fontSize: 13 }}>{formError}</div>}
+        </Dialog>
+      )}
+
+      {planning && (
+        <Dialog
+          key={planning.key}
+          title={t('Week of {date}', { date: shortDate(planning.start, lang, true) })}
+          submitLabel="Save"
+          wide
+          onClose={() => setPlanning(null)}
+          onSubmit={async (d) => {
+            const { rows, error } = readWeek(d, t);
+            if (error) {
+              setFormError(error);
+              return;
+            }
+            if (!confirmLoss(placedLost(planning, rows))) return;
+            const { key } = planning;
+            setPlanning(null);
+            await actions.setServiceWeek(key, rows);
+          }}
+        >
+          <p className="text-muted" style={{ margin: 0 }}>
+            {t('Choose the days the café opens this week, and their hours. The other weeks are not affected.')}
+          </p>
+          {/* a day this week doesn't open starts from the usual hours of that weekday, else from the first open day */}
+          <WeekRows
+            rows={planning.plan ?? weekly}
+            fallbackFor={(weekday) => usualOf(weekday) ?? (planning.plan ?? weekly)[0]}
+            t={t}
+          />
+          {formError && <div role="alert" style={{ color: 'var(--color-danger)', fontSize: 13 }}>{formError}</div>}
+          {planning.plan && (
+            <button
+              type="button"
+              className="btn btn-ghost self-start"
+              onClick={async () => {
+                if (!confirmLoss(placedLost(planning, null))) return;
+                const { key } = planning;
+                setPlanning(null);
+                await actions.clearServiceWeek(key);
+              }}
+            >
+              {t('Follow the usual hours again')}
+            </button>
+          )}
         </Dialog>
       )}
     </div>
@@ -290,8 +381,9 @@ const ChevronIcon = ({ dir }) => (
 );
 
 // Two weeks, Monday to Sunday, with arrows to the two weeks before or after, without limit.
-// Past days are greyed out and read-only.
-function Calendar({ days, range, page, loading, onPage, me, isAdmin, nameOf, onOpen }) {
+// Each week has a bar saying whether it follows the usual hours or has a plan of its own, and
+// admins plan it from there. Past days are greyed out and read-only.
+function Calendar({ days, range, weeks, hasUsual, onPlan, page, loading, onPage, me, isAdmin, nameOf, onOpen }) {
   const { t, lang } = useT();
   const today = todayKey();
   const byKey = new Map(days.map((d) => [d.key, d]));
@@ -305,18 +397,63 @@ function Calendar({ days, range, page, loading, onPage, me, isAdmin, nameOf, onO
       weekday: style,
       timeZone: 'UTC',
     });
-  const shortDate = (date, withYear) =>
-    new Date(Date.UTC(date.y, date.m - 1, date.d)).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
-      day: 'numeric',
-      month: 'short',
-      ...(withYear && { year: 'numeric' }),
-      timeZone: 'UTC',
-    });
   const monthName = (date) =>
     new Date(Date.UTC(date.y, date.m - 1, date.d)).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
       month: 'short',
       timeZone: 'UTC',
     });
+
+  const renderCell = (c, i) => {
+    const day = c.day;
+    const s = day?.service;
+    const open = s ? s.needed - s.assigned.length : 0;
+    const mine = s?.assigned.includes(me.id);
+    // Members open a day with a service; admins also open closed days and empty ones.
+    const clickable = c.past ? Boolean(s) : Boolean(s || isAdmin);
+    const showMonth = i === 0 || c.date.d === 1;
+    const state = `${day?.closed ? 'is-closed' : s ? (open > 0 ? 'is-open' : 'is-full') : 'is-empty'}${c.past ? ' is-past' : ''}`;
+    const label = [
+      formatDay(c.date, lang),
+      day?.closed ? t('Closed') : s ? `${s.time}, ${t('{a} of {b} staffed', { a: s.assigned.length, b: s.needed })}` : t('No service'),
+      mine ? t('You are on it') : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    const body = (
+      <>
+        <span className="cal-date">
+          <span className={c.key === today ? 'cal-num cal-today' : 'cal-num'}>{c.date.d}</span>
+          {showMonth && <span className="cal-month">{monthName(c.date)}</span>}
+          {mine && <span className="tag tag-accent-2 cal-me">{t('Me')}</span>}
+        </span>
+        {day?.closed && <span className="cal-note">{t('Closed')}</span>}
+        {s && (
+          <>
+            <span className="cal-time">{s.time}</span>
+            <span className={open > 0 ? 'tag tag-warn cal-count' : 'tag tag-accent-2 cal-count'}>
+              {s.assigned.length}/{s.needed}
+            </span>
+            {s.assigned.length > 0 && (
+              <span className="cal-names">
+                {s.assigned.slice(0, 3).map((id) => firstName(nameOf.get(id))).join(', ')}
+                {s.assigned.length > 3 && ` +${s.assigned.length - 3}`}
+              </span>
+            )}
+          </>
+        )}
+        {day?.exception && !day.closed && <span className="cal-flag" title={t('Special hours')} />}
+      </>
+    );
+    return clickable ? (
+      <button key={c.key} type="button" role="listitem" className={`cal-cell ${state}`} aria-label={label} onClick={() => onOpen(c.key)}>
+        {body}
+      </button>
+    ) : (
+      <div key={c.key} role="listitem" className={`cal-cell ${state}`} aria-label={label}>
+        {body}
+      </div>
+    );
+  };
 
   return (
     <div className="card elev-sm cal">
@@ -325,7 +462,7 @@ function Calendar({ days, range, page, loading, onPage, me, isAdmin, nameOf, onO
           <ChevronIcon dir="left" />
         </button>
         <div className="cal-range" aria-live="polite">
-          {shortDate(range.from, range.from.y !== range.to.y)} – {shortDate(range.to, true)}
+          {shortDate(range.from, lang, range.from.y !== range.to.y)} – {shortDate(range.to, lang, true)}
         </div>
         <button type="button" className="btn btn-secondary btn-icon" aria-label={t('Next two weeks')} onClick={() => onPage(page + 1)}>
           <ChevronIcon dir="right" />
@@ -336,63 +473,30 @@ function Calendar({ days, range, page, loading, onPage, me, isAdmin, nameOf, onO
           </button>
         )}
       </div>
-      <div className={loading ? 'cal-grid is-loading' : 'cal-grid'} role="list" aria-busy={loading}>
-        {cells.slice(0, 7).map((c) => (
-          <div key={c.key} className="cal-head" aria-hidden="true">
-            {weekdayName(c.date, 'short')}
+      <div className={loading ? 'cal-weeks is-loading' : 'cal-weeks'} aria-busy={loading}>
+        {weeks.map((w, n) => (
+          <div key={w.key} className="cal-week">
+            <div className="cal-week-bar">
+              <span className="cal-week-title">{t('Week of {date}', { date: shortDate(w.start, lang) })}</span>
+              <span className={w.plan ? 'tag tag-accent' : 'tag tag-neutral'}>
+                {w.plan ? t('Custom week') : hasUsual ? t('Usual hours') : t('Not planned yet')}
+              </span>
+              {isAdmin && w.end >= today && (
+                <button type="button" className="btn btn-secondary" onClick={() => onPlan(w)}>
+                  {t('Plan this week')}
+                </button>
+              )}
+            </div>
+            <div className="cal-grid" role="list">
+              {cells.slice(n * 7, n * 7 + 7).map((c) => (
+                <div key={`head-${c.key}`} className="cal-head" aria-hidden="true">
+                  {weekdayName(c.date, 'short')}
+                </div>
+              ))}
+              {cells.slice(n * 7, n * 7 + 7).map((c, j) => renderCell(c, n * 7 + j))}
+            </div>
           </div>
         ))}
-        {cells.map((c, i) => {
-          const day = c.day;
-          const s = day?.service;
-          const open = s ? s.needed - s.assigned.length : 0;
-          const mine = s?.assigned.includes(me.id);
-          // Members open a day with a service; admins also open closed days and empty ones.
-          const clickable = c.past ? Boolean(s) : Boolean(s || isAdmin);
-          const showMonth = i === 0 || c.date.d === 1;
-          const state = `${day?.closed ? 'is-closed' : s ? (open > 0 ? 'is-open' : 'is-full') : 'is-empty'}${c.past ? ' is-past' : ''}`;
-          const label = [
-            formatDay(c.date, lang),
-            day?.closed ? t('Closed') : s ? `${s.time}, ${t('{a} of {b} staffed', { a: s.assigned.length, b: s.needed })}` : t('No service'),
-            mine ? t('You are on it') : '',
-          ]
-            .filter(Boolean)
-            .join(' · ');
-          const body = (
-            <>
-              <span className="cal-date">
-                <span className={c.key === today ? 'cal-num cal-today' : 'cal-num'}>{c.date.d}</span>
-                {showMonth && <span className="cal-month">{monthName(c.date)}</span>}
-                {mine && <span className="tag tag-accent-2 cal-me">{t('Me')}</span>}
-              </span>
-              {day?.closed && <span className="cal-note">{t('Closed')}</span>}
-              {s && (
-                <>
-                  <span className="cal-time">{s.time}</span>
-                  <span className={open > 0 ? 'tag tag-warn cal-count' : 'tag tag-accent-2 cal-count'}>
-                    {s.assigned.length}/{s.needed}
-                  </span>
-                  {s.assigned.length > 0 && (
-                    <span className="cal-names">
-                      {s.assigned.slice(0, 3).map((id) => firstName(nameOf.get(id))).join(', ')}
-                      {s.assigned.length > 3 && ` +${s.assigned.length - 3}`}
-                    </span>
-                  )}
-                </>
-              )}
-              {day?.exception && !day.closed && <span className="cal-flag" title={t('Special hours')} />}
-            </>
-          );
-          return clickable ? (
-            <button key={c.key} type="button" role="listitem" className={`cal-cell ${state}`} aria-label={label} onClick={() => onOpen(c.key)}>
-              {body}
-            </button>
-          ) : (
-            <div key={c.key} role="listitem" className={`cal-cell ${state}`} aria-label={label}>
-              {body}
-            </div>
-          );
-        })}
       </div>
       <div className="cal-legend">
         <span><span className="tag tag-warn">1/2</span> {t('People missing')}</span>
@@ -417,7 +521,7 @@ function DayDialog({ day, me, isAdmin, nameOf, onClose, onAssign, onEdit, onReop
           <p style={{ margin: 0, textAlign: 'center' }}>{t('Closed that day.')}</p>
           {isAdmin && (
             <div className="shift-actions">
-              <button className="btn btn-secondary" onClick={() => onReopen(day)}>{t('Reopen with the usual hours')}</button>
+              <button className="btn btn-secondary" onClick={() => onReopen(day)}>{t('Reopen as planned')}</button>
               <button className="btn btn-ghost" onClick={() => onEdit(day)}>{t('Edit this day')}</button>
             </div>
           )}
@@ -498,10 +602,31 @@ function DayDialog({ day, me, isAdmin, nameOf, onClose, onAssign, onEdit, onReop
   );
 }
 
-// One line of the usual-hours form: open that weekday?, hours, head count.
-function WeekdayRow({ weekday, name, usual, t }) {
-  const [open, setOpen] = useState(Boolean(usual));
-  const [start, end] = splitTime(usual?.time_label);
+// The seven weekdays of a week form (the usual hours, or one week's plan). `rows` are the
+// days open when the form opens; `fallbackFor(weekday)` gives the hours a closed weekday
+// starts from if it gets opened.
+function WeekRows({ rows, fallbackFor, t }) {
+  return (
+    <div className="week-hours">
+      {WEEKDAYS.map((name, i) => (
+        <WeekdayRow
+          key={name}
+          weekday={i + 1}
+          name={t(name)}
+          current={rows.find((r) => r.weekday === i + 1)}
+          fallback={fallbackFor?.(i + 1)}
+          t={t}
+        />
+      ))}
+    </div>
+  );
+}
+
+// One line of a week form: open that weekday?, hours, head count.
+function WeekdayRow({ weekday, name, current, fallback, t }) {
+  const [open, setOpen] = useState(Boolean(current));
+  const shown = current ?? fallback;
+  const [start, end] = splitTime(shown?.time_label);
   return (
     <div className="week-row">
       <label className="week-day">
@@ -519,7 +644,7 @@ function WeekdayRow({ weekday, name, usual, t }) {
             min="1"
             max="20"
             className="input"
-            defaultValue={usual?.needed ?? 2}
+            defaultValue={shown?.needed ?? 2}
             required
           />
         </>

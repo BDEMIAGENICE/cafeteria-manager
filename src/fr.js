@@ -69,19 +69,30 @@ export default {
   'Closed that day.': 'Fermé ce jour-là.',
   'No service planned that day.': 'Aucun service prévu ce jour-là.',
   'Open this day': 'Ouvrir ce jour',
-  'No opening hours yet. Set the usual hours first.':
-    "Aucun horaire d'ouverture pour l'instant. Commencez par définir les horaires habituels.",
-  'One shift a day at most. These hours apply to every week; a single date can still be closed or changed from its card.':
-    'Un créneau par jour au maximum. Ces horaires valent pour toutes les semaines ; une date précise peut toujours être fermée ou modifiée depuis sa carte.',
+  'Nothing is planned yet. Plan a week from the calendar, or set the usual hours.':
+    "Rien n'est encore planifié. Planifiez une semaine depuis le calendrier, ou définissez les horaires habituels.",
+  'One shift a day at most. These are the hours of every week that has no plan of its own: plan a week from the calendar to open other days.':
+    "Un créneau par jour au maximum. Ce sont les horaires de toutes les semaines qui n'ont pas leur propre plan : planifiez une semaine depuis le calendrier pour ouvrir d'autres jours.",
   '{day}: the shift must end after it starts.': '{day} : le créneau doit se terminer après son début.',
   'Edit this day': 'Modifier ce jour',
   'Special hours': 'Horaire exceptionnel',
   Closed: 'Fermé',
   'Closed that day': 'Fermé ce jour-là',
-  'Reopen with the usual hours': "Rouvrir avec l'horaire habituel",
-  'Back to the usual hours': "Revenir à l'horaire habituel",
-  'Changes apply to this date only. The usual hours are set with “Usual hours”.':
-    'Les changements ne concernent que cette date. Les horaires de chaque semaine se règlent dans « Horaires habituels ».',
+  'Reopen as planned': 'Rouvrir comme prévu',
+  'Back to the planned hours': "Revenir à l'horaire prévu",
+  'Changes apply to this date only. The days a week opens are set with “Plan this week”.':
+    "Les changements ne concernent que cette date. Les jours d'ouverture d'une semaine se règlent avec « Planifier la semaine ».",
+
+  // Schedule: a plan for each week
+  'Week of {date}': 'Semaine du {date}',
+  'Custom week': 'Semaine personnalisée',
+  'Not planned yet': 'Pas encore planifiée',
+  'Plan this week': 'Planifier la semaine',
+  'Choose the days the café opens this week, and their hours. The other weeks are not affected.':
+    "Choisissez les jours d'ouverture de cette semaine, et leurs horaires. Les autres semaines ne changent pas.",
+  'Follow the usual hours again': 'Reprendre les horaires habituels',
+  '{n} people are placed on days this plan no longer opens. Continue anyway? They are placed again if those days reopen.':
+    "{n} personne(s) sont placées sur des jours que ce plan n'ouvre plus. Continuer quand même ? Elles retrouveront leur place si ces jours rouvrent.",
   '{n} people are placed on this day. Close it anyway? They are placed again if the day reopens.':
     '{n} personne(s) sont placées ce jour-là. Fermer quand même ? Elles retrouveront leur place si le jour rouvre.',
   'No shifts have been planned yet.': "Aucun créneau n'a encore été planifié.",
