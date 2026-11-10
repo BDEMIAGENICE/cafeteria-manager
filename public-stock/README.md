@@ -1,10 +1,13 @@
-# Stock en direct — page publique
+# Stock du service — page publique
 
-Page sans connexion qui affiche ce qu'il reste au comptoir de la Cafet'MIAGE, pour les
-étudiants et pour l'écran devant la cafet. Elle lit la même base Supabase que l'app.
+Page sans connexion qui affiche le stock de la Cafet'MIAGE, pour les étudiants et pour
+l'écran devant la cafet. Elle lit la même base Supabase que l'app.
+
+**Ce n'est pas un stock en temps réel** : l'équipe le met à jour à la main, au début de chaque
+service (depuis l'écran Stock de l'app). La page le dit en haut, en toutes lettres.
 
 - Fichiers statiques, sans build ni dépendance : `index.html`, `style.css`, `app.js`, `config.js`.
-- Actualisation automatique toutes les 30 secondes (`refreshSeconds` dans `config.js`), et dès que la page revient au premier plan.
+- La page se recharge toute seule toutes les 30 secondes (`refreshSeconds` dans `config.js`), et dès qu'elle revient au premier plan, pour afficher le stock dès que l'équipe l'a mis à jour.
 - Si le réseau coupe, le dernier stock reste affiché avec un message, et la page réessaie toute seule.
 - Les stocks sont saisis une fois par service, au début : la page le dit en haut, car en cours
   de service il peut en rester moins que ce qui est affiché. « Page actualisée à … » en bas

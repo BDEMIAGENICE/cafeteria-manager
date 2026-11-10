@@ -13,9 +13,11 @@ heure, sur les 4 prochaines semaines. Elle lit la même base Supabase que l'app.
 ## Ce que voient les visiteurs
 
 La page appelle la fonction `public_opening(days)` (migration
-`supabase/migrations/20261110000000_public_opening.sql`). Elle applique la même règle que
-l'app : l'exception de la date s'il y en a une, sinon l'horaire habituel du jour de la
-semaine. Elle ne renvoie que la date, ouvert ou non, l'horaire et si le jour sort de
+`supabase/migrations/20261110100000_service_weeks.sql`). Elle applique la même règle que
+l'app : l'exception de la date s'il y en a une, sinon le plan de sa semaine (les jours que
+l'équipe a choisi d'ouvrir cette semaine-là), sinon l'horaire habituel du jour de la semaine.
+Une semaine non planifiée suit donc l'horaire habituel : la page prévient que les semaines
+éloignées sont indicatives. Elle ne renvoie que la date, ouvert ou non, l'horaire et si le jour sort de
 l'ordinaire. Rien sur l'équipe ni sur les inscriptions.
 
 ## Mise en ligne
@@ -24,8 +26,10 @@ La page fait partie du build : `npm run build` copie ce dossier dans `dist/horai
 `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`, comme pour l'app et la page stock.
 Adresse : `<adresse du site>/horaires/`.
 
-1. Exécuter `supabase/migrations/20261110000000_public_opening.sql` dans l'éditeur SQL du
-   projet Supabase utilisé par le site.
+1. Exécuter `supabase/migrations/20261110100000_service_weeks.sql` dans l'éditeur SQL du
+   projet Supabase utilisé par le site (elle crée les plans de semaine et remplace
+   `public_opening()`; la migration `20261110000000_public_opening.sql` n'est plus nécessaire
+   si celle-ci est exécutée).
 2. Déployer le site comme d'habitude.
 
 Guide pas à pas : `docs/deployer-stock-public.html`.

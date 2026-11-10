@@ -18,7 +18,7 @@ const NAV = [
   ['admin', 'Admin', SlidersIcon, true], // admin only
 ];
 
-const EMPTY = { staff: [], inventory: [], calendars: [], days: [], weekly: [], exceptions: [] };
+const EMPTY = { staff: [], inventory: [], calendars: [], days: [], weekly: [], weeks: [], exceptions: [] };
 
 export default function App() {
   // undefined = still checking, null = signed out
@@ -118,6 +118,8 @@ function Signed({ session }) {
     setTargets: run(api.setTargets),
     // services (one a day, identified by its date)
     setOpeningHours: run(api.setOpeningHours),
+    setServiceWeek: run(api.setServiceWeek),
+    clearServiceWeek: run(api.clearServiceWeek),
     setServiceDay: run(api.setServiceDay),
     clearServiceDay: run(api.clearServiceDay),
     assignService: run(api.assignService),
@@ -200,6 +202,8 @@ function Signed({ session }) {
               loadedPage={data.page}
               onPage={goToPage}
               weekly={data.weekly}
+              weeks={data.weeks}
+              exceptions={data.exceptions}
               staff={data.staff}
               me={me}
               isAdmin={isAdmin}
