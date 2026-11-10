@@ -45,20 +45,50 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
 /* a class that sets "display" must not keep a hidden element on screen */
 [hidden] { display: none !important; }
 
-/* page: the tabs, then the page of the selected tab */
-.pc { max-width: 1200px; margin: 0 auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 22px; }
+/* page: the tabs and the language, then the page of the selected tab.
+   overflow-x: clip keeps a tab that slides in from the side from scrolling the page sideways. */
+.pc { max-width: 1200px; margin: 0 auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 22px; overflow-x: clip; }
+.pc-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
 .pc-tabs {
-  display: flex; gap: 6px; align-self: flex-start; padding: 6px;
+  position: relative; display: flex; gap: 6px; padding: 6px;
   background: var(--tile); border: 2px solid var(--line); border-radius: 999px;
 }
 .pc-tab {
+  position: relative; z-index: 1;
   appearance: none; border: 0; background: transparent; color: var(--muted); cursor: pointer;
   min-height: 44px; padding: 0 24px; border-radius: 999px;
   font-family: var(--heading); font-weight: 800; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase;
+  transition: color 0.25s ease;
 }
 .pc-tab:hover { color: var(--text); }
 .pc-tab[aria-selected="true"] { background: var(--cyan); color: var(--ink); }
 .pc-tab:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+/* the pill that slides under the selected tab (tabs.js); until it is there, the tab paints itself */
+.pc-pill {
+  position: absolute; top: 0; left: 0; z-index: 0; width: 0; height: 0; border-radius: 999px;
+  background: var(--cyan); pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pc-pill.is-still { transition: none; }
+.pc-tabs.has-pill .pc-tab[aria-selected="true"] { background: transparent; }
+
+/* FR / EN */
+.pc-lang { display: flex; gap: 4px; padding: 4px; background: var(--tile); border: 2px solid var(--line); border-radius: 999px; }
+.pc-lang-btn {
+  appearance: none; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+  min-width: 44px; min-height: 36px; padding: 0 12px; border-radius: 999px;
+  font-family: var(--heading); font-weight: 800; font-size: 18px; letter-spacing: 0.06em;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+.pc-lang-btn:hover { color: var(--text); }
+.pc-lang-btn[aria-pressed="true"] { background: var(--text); color: var(--ink); }
+.pc-lang-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* a tab slides in from the side of its label while it fades in */
+@keyframes pc-in-right { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+@keyframes pc-in-left { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: none; } }
+.pc-in-right { animation: pc-in-right 0.38s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.pc-in-left { animation: pc-in-left 0.38s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .ps, .po { display: flex; flex-direction: column; min-width: 0; }
 .ps { gap: 20px; }
 .po { gap: 22px; }
@@ -182,7 +212,7 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
 
 /* the screen in front of the café (?ecran): stock only, no tabs, bigger, no cursor */
 .ps-screen { max-width: none; padding: 28px 40px 40px; cursor: none; }
-.ps-screen .pc-tabs { display: none; }
+.ps-screen .pc-bar { display: none; }
 .ps-screen .ps-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
 .ps-screen .ps-item-name { font-size: 24px; }
 .ps-screen .ps-item-qty { font-size: 68px; }
@@ -195,7 +225,9 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
 /* phones */
 @media (max-width: 640px) {
   .pc { padding: 16px 14px 24px; gap: 16px; }
-  .pc-tabs { align-self: stretch; }
+  /* the language on its own line above the tabs, in both languages: the layout does not jump on a switch */
+  .pc-bar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 8px; }
+  .pc-lang { order: -1; align-self: flex-end; }
   .pc-tab { flex: 1 1 0; padding: 0 12px; font-size: 18px; }
   .ps { gap: 16px; }
   .po { gap: 18px; }
@@ -224,4 +256,8 @@ a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-ra
   .po-week-title { font-size: 21px; }
 }
 
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto; }
+  .pc-pill, .pc-tab, .pc-lang-btn { transition: none; }
+  .pc-in-right, .pc-in-left { animation: none; }
+}
