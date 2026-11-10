@@ -45,6 +45,11 @@ sort de l'ordinaire. Rien sur l'équipe ni sur les inscriptions.
 
 Affiche le stock de la Cafet'MIAGE, pour les étudiants et pour l'écran devant la cafet.
 
+Quand on arrive sur l'onglet, les cartes montent l'une après l'autre et chaque quantité **compte
+depuis 0** jusqu'à sa vraie valeur. Ça ne se joue qu'à l'arrivée sur l'onglet : les rechargements
+de 30 secondes et le changement de langue remplacent les chiffres sans rejouer l'animation.
+Rien ne bouge si le système demande de réduire les animations.
+
 **Ce n'est pas un stock en temps réel** : l'équipe le met à jour à la main, au début de chaque
 service (depuis l'écran Stock de l'app). L'onglet le dit en haut, en toutes lettres.
 

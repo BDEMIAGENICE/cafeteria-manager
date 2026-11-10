@@ -193,7 +193,7 @@ function Signed({ session }) {
               <button className="btn btn-secondary" onClick={() => setInfo(null)}>{t('Dismiss')}</button>
             </div>
           )}
-          {status === 'loading' && <p className="text-muted">{t('Loading…')}</p>}
+          {status === 'loading' && <p className="text-muted loading">{t('Loading…')}</p>}
           {status === 'ready' && screen === 'schedule' && (
             <Schedule
               days={data.days}

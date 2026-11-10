@@ -5,6 +5,7 @@ import { planImport } from '../importStock.js';
 import { buildShoppingList, shoppingListText } from '../shoppingList.js';
 import { DRIVE_SITES } from '../driveSites.js';
 import Michel from '../Michel.jsx';
+import CountUp from '../CountUp.jsx';
 
 // Empty field = no target.
 const readTarget = (value) => (value === '' || value == null ? null : Math.max(0, Number(value)));
@@ -85,15 +86,15 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
       <div className="stat-grid">
         <div className="card elev-sm stat">
           <div className="label-caps">{t('Units in stock')}</div>
-          <div className="stat-value" style={{ color: 'var(--color-accent-2-700)' }}>{totalItems}</div>
+          <div className="stat-value" style={{ color: 'var(--color-accent-2-700)' }}><CountUp value={totalItems} delay={250} /></div>
         </div>
         <div className="card elev-sm stat">
           <div className="label-caps">{t('Running low')}</div>
-          <div className="stat-value" style={{ color: 'var(--color-warn-800)' }}>{lowStockCount}</div>
+          <div className="stat-value" style={{ color: 'var(--color-warn-800)' }}><CountUp value={lowStockCount} delay={310} /></div>
         </div>
         <div className="card elev-sm stat">
           <div className="label-caps">{t('Used this week')}</div>
-          <div className="stat-value">{weeklyUsage}</div>
+          <div className="stat-value"><CountUp value={weeklyUsage} delay={370} /></div>
         </div>
       </div>
 
@@ -318,15 +319,15 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
             <div className="import-summary">
               <div className="import-stats">
                 <div className="import-stat">
-                  <div className="import-stat-value" style={{ color: 'var(--color-accent-2-700)' }}>{plan.updates.length}</div>
+                  <div className="import-stat-value" style={{ color: 'var(--color-accent-2-700)' }}><CountUp value={plan.updates.length} delay={100} /></div>
                   <div className="label-caps">{t('Updated')}</div>
                 </div>
                 <div className="import-stat">
-                  <div className="import-stat-value" style={{ color: 'var(--color-accent-700)' }}>{plan.creates.length}</div>
+                  <div className="import-stat-value" style={{ color: 'var(--color-accent-700)' }}><CountUp value={plan.creates.length} delay={160} /></div>
                   <div className="label-caps">{t('New')}</div>
                 </div>
                 <div className="import-stat">
-                  <div className="import-stat-value">{plan.skipped.length}</div>
+                  <div className="import-stat-value"><CountUp value={plan.skipped.length} delay={220} /></div>
                   <div className="label-caps">{t('Ignored')}</div>
                 </div>
               </div>

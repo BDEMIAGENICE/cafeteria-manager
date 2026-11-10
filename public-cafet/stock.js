@@ -43,6 +43,53 @@
     return node;
   }
 
+  // ---- Entrance: when the tab comes up, the cards rise one after the other and each quantity
+  // counts up from 0 to its real value. Only on arrival: the 30-second refreshes and the
+  // language switch redraw the numbers in place, without replaying it.
+  var motionOk = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var entrancePending = true; // the next time the cards are on screen
+  var entranceRun = 0; // a new run stops the previous one
+
+  function countUp(node, target, delay, run) {
+    var duration = 900;
+    var whole = Math.floor(target) === target;
+    var started = null;
+    node.textContent = qty.format(0);
+    function step(now) {
+      if (run !== entranceRun || !node.isConnected) return;
+      if (started === null) started = now;
+      var progress = Math.min(1, Math.max(0, (now - started - delay) / duration));
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var value = target * eased;
+      node.textContent = qty.format(progress === 1 ? target : whole ? Math.round(value) : Math.round(value * 10) / 10);
+      if (progress < 1) window.requestAnimationFrame(step);
+    }
+    window.requestAnimationFrame(step);
+  }
+
+  function playEntrance() {
+    if (!entrancePending || !items || el('panel-stock').hidden) return;
+    entrancePending = false;
+    if (!motionOk) return;
+    var run = ++entranceRun;
+    el('stock-groups').querySelectorAll('.ps-item').forEach(function (card, index) {
+      var delay = 120 + Math.min(index, 16) * 45;
+      card.style.setProperty('--i', Math.min(index, 16));
+      card.classList.remove('is-entering');
+      void card.offsetWidth; // restart the animation
+      card.classList.add('is-entering');
+      var value = card.querySelector('.ps-item-qty');
+      var target = Number(value.getAttribute('data-value'));
+      if (target > 0) countUp(value, target, delay, run);
+    });
+  }
+
+  document.addEventListener('cafet:tabshown', function (e) {
+    if (e.detail !== 'stock') return;
+    entrancePending = true;
+    playEntrance();
+  });
+
   function render() {
     var groups = el('stock-groups');
     groups.replaceChildren();
@@ -81,7 +128,9 @@
         .forEach(function (i) {
           var li = make('li', 'ps-item is-' + i.status);
           li.append(make('span', 'ps-item-name', i.name));
-          li.append(make('span', 'ps-item-qty', i.status === 'out' ? '0' : qty.format(i.quantity)));
+          var quantity = make('span', 'ps-item-qty', i.status === 'out' ? '0' : qty.format(i.quantity));
+          if (i.status !== 'out') quantity.setAttribute('data-value', Number(i.quantity));
+          li.append(quantity);
           var foot = make('span', 'ps-item-foot');
           foot.append(make('span', 'ps-badge is-' + i.status, t('stock.status.' + i.status)));
           if (i.price != null) foot.append(make('span', 'ps-price', eur.format(i.price)));
@@ -91,6 +140,7 @@
       section.append(grid);
       groups.append(section);
     });
+    playEntrance();
   }
 
   // The messages around the list: what they say depends on the state and on the language.
