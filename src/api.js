@@ -39,10 +39,12 @@ export async function loadAll(page = 0) {
   const last = dateKey(range.to);
   // Calendar hints only exist where calendar-sync computes them: the next HORIZON_DAYS days.
   const hintsUntil = dateKey(addDays(parseDateKey(today), HORIZON_DAYS - 1));
-  const [staff, products, weekly, exceptions, assignments, status, calendars] = await Promise.all([
+  const [staff, products, weekly, weekPlans, exceptions, assignments, status, calendars] = await Promise.all([
     supabase.from('staff').select('*').order('id').then(check),
     supabase.from('products').select('*').order('id').then(check),
     supabase.from('opening_hours').select('*').order('weekday').then(check),
+    // a week is identified by its Monday, and a page starts on one: both of its weeks are in range
+    supabase.from('service_weeks').select('*').gte('week_start', first).lte('week_start', last).then(check),
     supabase.from('service_days').select('*').gte('date', first).lte('date', last).then(check),
     supabase.from('service_assignments').select('*').gte('date', first).lte('date', last).then(check),
     supabase.from('service_status').select('*').gte('date', first).lte('date', last).then(check),
@@ -50,9 +52,10 @@ export async function loadAll(page = 0) {
   ]);
 
   const withCalendar = new Set(calendars.map((c) => c.staff_id));
-  // One service a day at most, identified by its date: the usual hours of its weekday,
-  // unless that date has an exception. Placements belong to the date.
-  const days = servicesFrom(weekly, exceptions, range.from, PAGE_DAYS).map((s) => {
+  // One service a day at most, identified by its date: the hours its week plans for that
+  // weekday (the usual hours when the week has no plan), unless that date has an exception.
+  // Placements belong to the date.
+  const days = servicesFrom(weekly, exceptions, range.from, PAGE_DAYS, weekPlans).map((s) => {
     const rows = status.filter((r) => r.date === s.key);
     const service = s.closed
       ? null
@@ -87,10 +90,24 @@ export async function loadAll(page = 0) {
     };
   });
 
+  // The weeks of this page: `plan` is the week's own list of open days, null when the week
+  // follows the usual hours.
+  const weeks = Array.from({ length: PAGE_DAYS / 7 }, (_, i) => {
+    const start = addDays(range.from, i * 7);
+    const key = dateKey(start);
+    return {
+      key,
+      start,
+      end: dateKey(addDays(start, 6)),
+      plan: weekPlans.find((w) => w.week_start === key)?.days ?? null,
+    };
+  });
+
   return {
     staff,
     days,
     weekly,
+    weeks,
     exceptions,
     page,
     range,
@@ -182,7 +199,12 @@ export const api = {
     const closed = [1, 2, 3, 4, 5, 6, 7].filter((d) => !open.includes(d));
     if (closed.length) check(await supabase.from('opening_hours').delete().in('weekday', closed));
   },
-  // { closed, time_label, needed } for one date; null time or count keep the usual ones.
+  // The days a week opens, by the Monday that identifies it: [{ weekday, time_label, needed }]
+  // for each open day, [] for a week that is shut. Weeks without a plan follow the usual hours.
+  setServiceWeek: (weekStart, days) =>
+    supabase.from('service_weeks').upsert({ week_start: weekStart, days }).then(check),
+  clearServiceWeek: (weekStart) => supabase.from('service_weeks').delete().eq('week_start', weekStart).then(check),
+  // { closed, time_label, needed } for one date; null time or count keep the week's.
   setServiceDay: (date, day) => supabase.from('service_days').upsert({ date, ...day }).then(check),
   clearServiceDay: (date) => supabase.from('service_days').delete().eq('date', date).then(check),
   async assignService(date, staffIds) {

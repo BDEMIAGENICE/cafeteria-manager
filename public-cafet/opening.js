@@ -1,9 +1,12 @@
-// Cafet'MIAGE opening days page. No sign-in, no build step, no library: it reads the
-// public_opening() function of the app's Supabase database through its REST API.
+// Cafet'MIAGE public page, "Jours d'ouverture" tab. No sign-in, no build step, no library: it
+// reads the public_opening() function of the app's Supabase database through its REST API.
 (function () {
   'use strict';
 
-  var config = window.PUBLIC_OPENING_CONFIG || {};
+  var site = window.PUBLIC_CONFIG || {};
+  var config = site.opening || {};
+  // The screen in front of the café (?ecran) only shows the stock: nothing to load here.
+  if (new URLSearchParams(window.location.search).has('ecran')) return;
   var days = Math.min(Math.max(config.days || 28, 1), 90);
   var refreshMs = (config.refreshSeconds || 300) * 1000;
   var TZ = 'Europe/Paris';
@@ -63,9 +66,9 @@
   function renderToday() {
     if (!rows || !rows.length) return;
     var today = rows[0];
-    var box = el('today');
-    var status = el('today-status');
-    var detail = el('today-detail');
+    var box = el('opening-today');
+    var status = el('opening-today-status');
+    var detail = el('opening-today-detail');
     var now = parisClock();
     var h = today.open ? hours(today.time_label) : null;
     var later = nextOpening(1);
@@ -96,11 +99,11 @@
   }
 
   function renderWeeks() {
-    var weeks = el('weeks');
+    var weeks = el('opening-weeks');
     weeks.replaceChildren();
-    el('empty').hidden = rows.length > 0;
+    el('opening-empty').hidden = rows.length > 0;
     if (!rows.length) {
-      el('empty').textContent = 'Aucun jour à afficher.';
+      el('opening-empty').textContent = 'Aucun jour à afficher.';
       return;
     }
 
@@ -149,12 +152,12 @@
   }
 
   function showError() {
-    var alert = el('alert');
+    var alert = el('opening-alert');
     alert.hidden = false;
     alert.textContent = lastUpdate
       ? 'Connexion perdue : horaires affichés de ' + parisTimeOf(lastUpdate) + '. Nouvel essai automatique.'
       : 'Les horaires ne peuvent pas être affichés pour le moment. Nouvel essai automatique.';
-    if (!lastUpdate) el('empty').hidden = true;
+    if (!lastUpdate) el('opening-empty').hidden = true;
   }
 
   var loading = false;
@@ -162,9 +165,9 @@
     if (loading) return;
     loading = true;
     try {
-      var res = await fetch(config.supabaseUrl + '/rest/v1/rpc/public_opening', {
+      var res = await fetch(site.supabaseUrl + '/rest/v1/rpc/public_opening', {
         method: 'POST',
-        headers: { apikey: config.publishableKey, 'Content-Type': 'application/json' },
+        headers: { apikey: site.publishableKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({ days: days }),
         cache: 'no-store',
       });
@@ -174,8 +177,8 @@
       lastUpdate = new Date();
       renderWeeks();
       renderToday();
-      el('alert').hidden = true;
-      el('foot').textContent = 'Page actualisée à ' + parisTimeOf(lastUpdate);
+      el('opening-alert').hidden = true;
+      el('opening-foot').textContent = 'Page actualisée à ' + parisTimeOf(lastUpdate);
     } catch (e) {
       showError();
     } finally {
@@ -183,8 +186,8 @@
     }
   }
 
-  if (!config.supabaseUrl || !config.publishableKey || /COLLER_ICI|VOTRE-PROJET/.test(config.supabaseUrl + config.publishableKey)) {
-    el('empty').textContent = 'Page pas encore configurée : renseignez la clé dans config.js.';
+  if (!site.supabaseUrl || !site.publishableKey || /COLLER_ICI|VOTRE-PROJET/.test(site.supabaseUrl + site.publishableKey)) {
+    el('opening-empty').textContent = 'Page pas encore configurée : renseignez la clé dans config.js.';
     return;
   }
 

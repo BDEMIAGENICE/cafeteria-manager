@@ -129,18 +129,18 @@
     <div class="eyebrow">Cafet'MIAGE · Guide de mise en ligne</div>
     <h1>Déployer les pages publiques</h1>
     <p class="lede">
-      La branche <code class="inline">main</code> contient deux pages sans connexion pour les étudiants : le
-      <strong>stock du service</strong>, aussi affiché sur l'écran devant le comptoir, et les <strong>jours d'ouverture</strong>
-      des 4 prochaines semaines. Elles sont construites avec le site : sur Vercel, il suffit de récupérer
+      La branche <code class="inline">main</code> contient une page sans connexion pour les étudiants, avec deux onglets : les
+      <strong>jours d'ouverture</strong> des 4 prochaines semaines et le <strong>stock du service</strong>, aussi affiché sur
+      l'écran devant le comptoir. Elle est construite avec le site : sur Vercel, il suffit de récupérer
       <code class="inline">main</code>, d'ajouter deux fonctions SQL et de redéployer. Comptez 5 minutes.
     </p>
     <div class="url-box">
-      <span>Stock du service</span>
-      <code>https://&lt;votre-site&gt;.vercel.app/stock/</code>
+      <span>Jours d'ouverture et stock</span>
+      <code>https://&lt;votre-site&gt;.vercel.app/cafet/</code>
     </div>
     <div class="url-box">
-      <span>Jours d'ouverture</span>
-      <code>https://&lt;votre-site&gt;.vercel.app/horaires/</code>
+      <span>Directement sur un onglet</span>
+      <code>…/cafet/#horaires</code> · <code>…/cafet/#stock</code>
     </div>
   </header>
 
@@ -153,7 +153,7 @@
       <li>
         Dans Vercel, <code class="inline">VITE_SUPABASE_URL</code> et <code class="inline">VITE_SUPABASE_PUBLISHABLE_KEY</code>
         doivent déjà exister (Settings → Environment Variables), puisque le site en a besoin. La page publique réutilise ces
-        deux valeurs pour les deux pages : il n'y a aucune clé à copier à la main.
+        deux valeurs pour la page : il n'y a aucune clé à copier à la main.
       </li>
     </ul>
   </section>
@@ -208,22 +208,52 @@ $$;
 revoke all on function public.public_stock() from public;
 grant execute on function public.public_stock() to anon, authenticated;</pre>
           </div>
-          <p><strong>Script 2 : les jours d'ouverture</strong></p>
+          <p><strong>Script 2 : les jours d'ouverture, semaine par semaine</strong></p>
           <div class="code">
             <div class="code-head">
-              <span class="code-label">supabase/migrations/20261110000000_public_opening.sql</span>
+              <span class="code-label">supabase/migrations/20261110100000_service_weeks.sql</span>
               <button class="copy" type="button" data-copy="sql-opening" id="copy-sql-opening">Copier</button>
             </div>
-            <pre id="sql-opening"><span class="c">-- Public opening page (public-opening/): which days the café opens, readable without
--- signing in. It returns every day of the coming `days` days (1 to 90, from today in
--- Paris), with the same rule as the app: a date&#x27;s exception if it has one, else its
--- weekday&#x27;s usual hours. Nothing about staff or sign-ups leaves the database.
+            <pre id="sql-opening"><span class="c">-- A plan for each week: which days the café opens can change from one week to the next
+-- (this week Tuesday and Thursday, next week Monday, Wednesday and Friday, the one after
+-- every day).
+--
+--   service_weeks   one row per planned week, identified by its Monday. `days` lists the
+--                   open days of that week: [{ &quot;weekday&quot;: 2, &quot;time_label&quot;: &quot;12:15–13:30&quot;,
+--                   &quot;needed&quot;: 2 }, …] (weekday 1 = Monday … 7 = Sunday). An empty list is a
+--                   week that is shut.
+--
+-- The service of a date is, in this order: its exception in service_days if it has one,
+-- else its week&#x27;s plan if the week has one, else its weekday&#x27;s usual hours in
+-- opening_hours. A week with no row follows the usual hours, so nothing changes until an
+-- admin plans a week, and weeks far ahead keep working without being planned.</span>
+
+create table if not exists public.service_weeks (
+  week_start date  primary key check (extract(isodow from week_start) = 1),
+  days       jsonb not null default &#x27;[]&#x27;::jsonb check (jsonb_typeof(days) = &#x27;array&#x27;)
+);
+
+<span class="c">-- Same access as the other schedule tables: staff read, admins edit, nothing for visitors
+-- (they go through public_opening() below).</span>
+alter table public.service_weeks enable row level security;
+revoke all on public.service_weeks from anon;
+
+drop policy if exists staff_read on public.service_weeks;
+drop policy if exists admin_write on public.service_weeks;
+create policy staff_read on public.service_weeks for select to authenticated using (public.is_staff());
+create policy admin_write on public.service_weeks for all to authenticated
+  using (public.is_admin()) with check (public.is_admin());
+
+<span class="c">-- Public opening page (public-opening/): follows the same rule as the app.
 --
 --   open:       whether the café opens that day
 --   time_label: its hours, null when closed
---   special:    the day differs from its weekday&#x27;s usual hours (closed or open on an
---               unusual day, or other hours), because an admin set an exception</span>
-
+--   special:    the day differs from what its week plans (closed on a planned day, open on
+--               an unplanned one, or other hours), because an admin set an exception for
+--               that date. A week&#x27;s own plan is not &quot;special&quot;: it is the schedule.
+--
+-- Returns the coming `days` days (1 to 90, from today in Paris). Nothing about staff or
+-- sign-ups leaves the database.</span>
 create or replace function public.public_opening(days int default 28)
 returns table (date date, open boolean, time_label text, special boolean)
 language sql
@@ -234,19 +264,37 @@ as $$
   with span as (
     select ((now() at time zone &#x27;Europe/Paris&#x27;)::date + i) as day
     from generate_series(0, least(greatest(coalesce(days, 28), 1), 90) - 1) as i
+  ),
+  planned as (
+<span class="c">    -- the hours the week gives that day: its own plan if it has one, else the usual hours</span>
+    select
+      span.day,
+      case
+        when sw.week_start is not null then (
+          select p.time_label
+          from jsonb_to_recordset(sw.days) as p(weekday int, time_label text)
+          where p.weekday = extract(isodow from span.day)::int
+          limit 1
+        )
+        else oh.time_label
+      end as label
+    from span
+    left join public.service_weeks sw
+      on sw.week_start = span.day - (extract(isodow from span.day)::int - 1)
+    left join public.opening_hours oh
+      on oh.weekday = extract(isodow from span.day)
   )
   select
-    span.day,
+    planned.day,
     hours.label is not null,
     hours.label,
-    hours.label is distinct from oh.time_label
-  from span
-  left join public.opening_hours oh on oh.weekday = extract(isodow from span.day)
-  left join public.service_days sd on sd.date = span.day
+    hours.label is distinct from planned.label
+  from planned
+  left join public.service_days sd on sd.date = planned.day
   cross join lateral (
-    select case when sd.closed then null else coalesce(sd.time_label, oh.time_label) end as label
+    select case when sd.closed then null else coalesce(sd.time_label, planned.label) end as label
   ) as hours
-  order by span.day
+  order by planned.day
 $$;
 
 revoke all on function public.public_opening(int) from public;
@@ -333,8 +381,7 @@ git push</pre>
             pas : commande de build <code class="inline">npm run build</code>, dossier de sortie <code class="inline">dist</code>.
           </p>
           <p>
-            Pendant le build, les pages sont copiées dans <code class="inline">dist/stock/</code> et
-            <code class="inline">dist/horaires/</code> avec les valeurs
+            Pendant le build, la page est copiée dans <code class="inline">dist/cafet/</code> avec les valeurs
             <code class="inline">VITE_SUPABASE_…</code> du projet Vercel. Pour relancer un déploiement à la main : Vercel →
             Deployments → <strong>Redeploy</strong>, ou en ligne de commande :
           </p>
@@ -353,11 +400,13 @@ git push</pre>
   <section aria-labelledby="check">
     <h2 id="check">Vérifier</h2>
     <ul class="checks">
-      <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/stock/</code> affiche les produits par catégorie, sans demander de connexion.</span></li>
-      <li><span class="tick" aria-hidden="true"></span><span>Un encadré indique que les stocks sont ceux annoncés en début de service.</span></li>
-      <li><span class="tick" aria-hidden="true"></span><span>Changez un stock dans l'app : la page affiche la nouvelle quantité en moins de 30 secondes, sans être rechargée.</span></li>
-      <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/horaires/</code> affiche l'état du jour (« Ouvre à… », « Ouvert maintenant »…) et les 4 prochaines semaines.</span></li>
-      <li><span class="tick" aria-hidden="true"></span><span>Fermez un jour dans l'app (Planning → Modifier ce jour) : il apparaît en « Fermeture exceptionnelle » sur la page des horaires.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span><code class="inline">https://&lt;votre-site&gt;/cafet/</code> s'ouvre sans demander de connexion, avec deux onglets : « Jours d'ouverture » et « Stock ».</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>L'onglet Stock affiche les produits par catégorie. Un encadré indique que ce n'est pas le stock en temps réel : l'équipe le met à jour à la main au début de chaque service.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Changez un stock dans l'app : la page affiche la nouvelle quantité en moins de 30 secondes, sans être rechargée (c'est ce que fait l'équipe en début de service).</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>L'onglet Jours d'ouverture affiche l'état du jour (« Ouvre à… », « Ouvert maintenant »…) et les 4 prochaines semaines.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Planifiez une semaine dans l'app (Planning → Planifier la semaine, par exemple mardi et jeudi seulement) : l'onglet Jours d'ouverture n'affiche que ces jours ouverts pour cette semaine.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Fermez un jour dans l'app (Planning → Modifier ce jour) : il apparaît en « Fermeture exceptionnelle » dans l'onglet Jours d'ouverture.</span></li>
+      <li><span class="tick" aria-hidden="true"></span><span>Les anciennes adresses <code class="inline">…/stock/</code> et <code class="inline">…/horaires/</code> redirigent vers le bon onglet.</span></li>
       <li><span class="tick" aria-hidden="true"></span><span>Le reste du site fonctionne comme avant, connexion comprise.</span></li>
     </ul>
   </section>
@@ -365,8 +414,8 @@ git push</pre>
   <section aria-labelledby="screen">
     <h2 id="screen">L'écran devant la cafet</h2>
     <p>
-      Ouvrez <code class="inline">https://&lt;votre-site&gt;/stock/?ecran</code> dans le navigateur de l'écran et passez en plein
-      écran (F11). Les textes sont plus grands, le curseur est masqué, l'écran ne se met pas en veille quand le navigateur le
+      Ouvrez <code class="inline">https://&lt;votre-site&gt;/cafet/?ecran</code> dans le navigateur de l'écran et passez en plein
+      écran (F11). L'écran n'affiche que le stock, sans onglets. Les textes sont plus grands, le curseur est masqué, l'écran ne se met pas en veille quand le navigateur le
       permet, et la liste défile doucement si elle dépasse la hauteur de l'écran. La page se met à jour toute seule toutes les
       30 secondes et garde le dernier stock affiché si le réseau coupe.
     </p>
@@ -396,9 +445,9 @@ git push</pre>
             <td>Refaites l'étape 1 (script 2), puis vérifiez avec <code class="inline">select * from public_opening(7);</code>.</td>
           </tr>
           <tr>
-            <td>404 sur <code class="inline">/stock/</code> ou <code class="inline">/horaires/</code></td>
+            <td>404 sur <code class="inline">/cafet/</code></td>
             <td>Le déploiement a été fait sur un commit qui n'a pas encore la page.</td>
-            <td>Vérifiez dans Vercel → Deployments que le commit déployé contient les dossiers <code class="inline">public-stock/</code> et <code class="inline">public-opening/</code>.</td>
+            <td>Vérifiez dans Vercel → Deployments que le commit déployé contient le dossier <code class="inline">public-cafet/</code>.</td>
           </tr>
           <tr>
             <td>Le stock ne baisse pas pendant le service</td>
@@ -411,8 +460,8 @@ git push</pre>
   </section>
 
   <footer>
-    Les pages sont dans les dossiers <code class="inline">public-stock/</code> et <code class="inline">public-opening/</code>
-    du dépôt. Leur <code class="inline">README.md</code> explique aussi comment les héberger seules, en dehors du site.
+    La page est dans le dossier <code class="inline">public-cafet/</code> du dépôt. Son
+    <code class="inline">README.md</code> explique aussi comment l'héberger seule, en dehors du site.
   </footer>
 </div>
 

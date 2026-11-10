@@ -250,3 +250,77 @@ test('sunday is weekday 7 and the range rolls across months and years', () => {
   const s = servicesFrom([{ weekday: 7, time_label: '10:00–11:00', needed: 1 }], [], { y: 2026, m: 12, d: 28 }, 14);
   assert.deepEqual(s.map((x) => x.key), ['2027-01-03', '2027-01-10']);
 });
+
+// ---- a plan for each week ----------------------------------------------------------------
+import { weekStart } from './core.js';
+
+const at = (weekday, time_label = '12:15–13:30', needed = 2) => ({ weekday, time_label, needed });
+const mon = { y: 2026, m: 11, d: 9 }; // a Monday
+// The scenario: this week Tuesday and Thursday, next week Monday, Wednesday and Friday,
+// the week after that every day. Later weeks have no plan: the usual hours apply.
+const PLANS = [
+  { week_start: '2026-11-09', days: [at(2), at(4)] },
+  { week_start: '2026-11-16', days: [at(1), at(3), at(5)] },
+  { week_start: '2026-11-23', days: [1, 2, 3, 4, 5, 6, 7].map((w) => at(w)) },
+];
+const openKeys = (s) => s.filter((x) => !x.closed).map((x) => x.key);
+
+test('weeks start on Monday, whatever day of the week it is, across months and years', () => {
+  assert.deepEqual(weekStart({ y: 2026, m: 11, d: 9 }), { y: 2026, m: 11, d: 9 }); // Monday
+  assert.deepEqual(weekStart({ y: 2026, m: 11, d: 15 }), { y: 2026, m: 11, d: 9 }); // Sunday
+  assert.deepEqual(weekStart({ y: 2026, m: 12, d: 2 }), { y: 2026, m: 11, d: 30 }); // Wednesday, into the month before
+  assert.deepEqual(weekStart({ y: 2027, m: 1, d: 1 }), { y: 2026, m: 12, d: 28 }); // Friday, into the year before
+});
+
+test('each week opens its own days', () => {
+  const s = openKeys(servicesFrom(WEEK, [], mon, 21, PLANS));
+  const inWeek = (first, last) => s.filter((k) => k >= first && k <= last);
+  assert.deepEqual(inWeek('2026-11-09', '2026-11-15'), ['2026-11-10', '2026-11-12']); // Tue, Thu
+  assert.deepEqual(inWeek('2026-11-16', '2026-11-22'), ['2026-11-16', '2026-11-18', '2026-11-20']); // Mon, Wed, Fri
+  assert.equal(inWeek('2026-11-23', '2026-11-29').length, 7); // every day
+});
+
+test('a week with no plan follows the usual hours', () => {
+  const s = servicesFrom(WEEK, [], { y: 2026, m: 11, d: 30 }, 7, PLANS);
+  assert.deepEqual(openKeys(s), ['2026-11-30', '2026-12-02']); // Monday and Wednesday of WEEK
+});
+
+test('the plan of a week replaces the usual hours: they do not add up', () => {
+  const s = servicesFrom(WEEK, [], mon, 7, PLANS); // WEEK would open Monday and Wednesday
+  assert.deepEqual(openKeys(s), ['2026-11-10', '2026-11-12']);
+});
+
+test('a week can open a day the usual hours keep closed, with its own hours', () => {
+  const s = servicesFrom(WEEK, [], mon, 7, [{ week_start: '2026-11-09', days: [at(6, '10:00–12:00', 1)] }]);
+  assert.deepEqual(s.map((x) => [x.key, x.time, x.needed]), [['2026-11-14', '10:00–12:00', 1]]);
+});
+
+test('a week with a plan but no open day is shut, an unplanned one is not', () => {
+  const none = servicesFrom(WEEK, [], mon, 14, [{ week_start: '2026-11-09', days: [] }]);
+  assert.deepEqual(openKeys(none), ['2026-11-16', '2026-11-18']);
+});
+
+test('a date exception still wins over the plan of its week', () => {
+  const s = servicesFrom(
+    WEEK,
+    [
+      { date: '2026-11-10', closed: true }, // planned Tuesday, shut
+      { date: '2026-11-11', closed: false, time_label: '09:00–10:00', needed: null }, // Wednesday, not planned, opened
+      { date: '2026-11-12', closed: false, time_label: '13:00–14:00', needed: null }, // planned Thursday, other hours
+    ],
+    mon,
+    7,
+    PLANS,
+  );
+  assert.deepEqual(s.map((x) => [x.key, x.closed, x.time, x.exception]), [
+    ['2026-11-10', true, undefined, true],
+    ['2026-11-11', false, '09:00–10:00', true],
+    ['2026-11-12', false, '13:00–14:00', true],
+  ]);
+  assert.equal(s[2].needed, 2); // the count falls back to the week's
+});
+
+test('a range that starts mid-week still uses the plan of that week', () => {
+  const s = servicesFrom(WEEK, [], { y: 2026, m: 11, d: 12 }, 7, PLANS); // Thu to Wed
+  assert.deepEqual(openKeys(s), ['2026-11-12', '2026-11-16', '2026-11-18']);
+});
