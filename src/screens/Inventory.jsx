@@ -3,17 +3,31 @@ import Dialog from '../Dialog.jsx';
 import { useT } from '../i18n.jsx';
 import { planImport } from '../importStock.js';
 import { buildShoppingList, shoppingListText } from '../shoppingList.js';
+import { stockJson, stockCsv } from '../exportStock.js';
 import { DRIVE_SITES } from '../driveSites.js';
+import { todayKey } from '../dates.js';
 import Michel from '../Michel.jsx';
 import CountUp from '../CountUp.jsx';
 
 // Empty field = no target.
 const readTarget = (value) => (value === '' || value == null ? null : Math.max(0, Number(value)));
 
-export default function Inventory({ inventory, adjustStock, importProducts, setTargets, canEdit }) {
+const downloadFile = (filename, content, mime) => {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+export default function Inventory({ inventory, adjustStock, importProducts, setTargets, setStocks, canEdit }) {
   const { t, lang } = useT();
   const [adjusting, setAdjusting] = useState(null);
   const [editingTargets, setEditingTargets] = useState(false);
+  const [editingStocks, setEditingStocks] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [shopping, setShopping] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
@@ -72,11 +86,17 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
           {canEdit && (
             <>
               <button className="btn btn-secondary" onClick={() => setImporting(true)}>{t('Import stock')}</button>
+              <button className="btn btn-secondary" onClick={() => setEditingStocks(true)} disabled={inventory.length === 0}>
+                {t('Set stock')}
+              </button>
               <button className="btn btn-secondary" onClick={() => setEditingTargets(true)} disabled={inventory.length === 0}>
                 {t('Set targets')}
               </button>
             </>
           )}
+          <button className="btn btn-secondary" onClick={() => setExporting(true)} disabled={inventory.length === 0}>
+            {t('Export stock')}
+          </button>
           <button className="btn btn-primary" onClick={() => setShopping(true)} disabled={inventory.length === 0}>
             {t('Shopping list')}
           </button>
@@ -227,6 +247,75 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
                 />
               </div>
             ))}
+          </div>
+        </Dialog>
+      )}
+
+      {editingStocks && (
+        <Dialog
+          title={t('Current stock')}
+          wide
+          onClose={() => setEditingStocks(false)}
+          onSubmit={async (data) => {
+            const changed = inventory
+              .map((i) => ({ id: i.id, current: Math.max(0, Number(data.get(`stock-${i.id}`))), before: i.current }))
+              .filter((c) => c.current !== c.before);
+            if (changed.length) await setStocks(changed.map(({ id, current }) => ({ id, current })));
+            setEditingStocks(false);
+          }}
+        >
+          <p className="text-muted" style={{ margin: 0, fontSize: 14 }}>
+            {t('Set every item’s stock by hand, for a quick full recount.')}
+          </p>
+          <div className="target-list">
+            {inventory.map((item) => (
+              <div key={item.id} className="target-row">
+                <label htmlFor={`stock-${item.id}`}>
+                  <span style={{ fontWeight: 600 }}>{item.name}</span>
+                  <span className="hint">{t('Min. {n}', { n: item.minLevel })}</span>
+                </label>
+                <input
+                  id={`stock-${item.id}`}
+                  name={`stock-${item.id}`}
+                  className="input"
+                  type="number"
+                  min="0"
+                  step="any"
+                  defaultValue={item.current}
+                  required
+                />
+              </div>
+            ))}
+          </div>
+        </Dialog>
+      )}
+
+      {exporting && (
+        <Dialog title={t('Export stock')} onClose={() => setExporting(false)}>
+          <p className="text-muted" style={{ margin: 0 }}>
+            {t('Choose a format to download the current stock list.')}
+          </p>
+          <div className="shift-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                downloadFile(`stock-${todayKey()}.json`, stockJson(inventory), 'application/json');
+                setExporting(false);
+              }}
+            >
+              {t('Export as JSON')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                downloadFile(`stock-${todayKey()}.csv`, stockCsv(inventory, t), 'text/csv;charset=utf-8;');
+                setExporting(false);
+              }}
+            >
+              {t('Export as CSV')}
+            </button>
           </div>
         </Dialog>
       )}
