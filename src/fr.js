@@ -166,6 +166,15 @@ export default {
   Target: 'Cible',
   'Target stock': 'Stock cible',
   'Set targets': 'Définir les cibles',
+  'Set stock': 'Définir les stocks',
+  'Current stock': 'Stock actuel',
+  'Set every item’s stock by hand, for a quick full recount.':
+    'Définissez le stock de chaque article à la main, pour un inventaire complet rapide.',
+  'Min. {n}': 'Min. {n}',
+  'Export stock': 'Exporter les stocks',
+  'Choose a format to download the current stock list.': 'Choisissez un format pour télécharger la liste des stocks actuels.',
+  'Export as JSON': 'Exporter en JSON',
+  'Export as CSV': 'Exporter en CSV',
   'Leave empty to keep this item off the shopping list.': 'Laissez vide pour ne pas mettre cet article dans la liste de courses.',
   'The level each item should be brought back to when restocking. Leave empty for items you don’t restock.':
     'Le niveau auquel ramener chaque article lors du réapprovisionnement. Laissez vide pour les articles que vous ne rachetez pas.',
