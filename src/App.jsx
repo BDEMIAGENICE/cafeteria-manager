@@ -116,6 +116,7 @@ function Signed({ session }) {
     adjustStock: run(api.adjustStock),
     importProducts: run(api.importProducts),
     setTargets: run(api.setTargets),
+    setStocks: run(api.setStocks),
     // services (one a day, identified by its date)
     setOpeningHours: run(api.setOpeningHours),
     setServiceWeek: run(api.setServiceWeek),
@@ -211,7 +212,14 @@ function Signed({ session }) {
             />
           )}
           {status === 'ready' && screen === 'inventory' && (
-            <Inventory inventory={data.inventory} adjustStock={actions.adjustStock} importProducts={actions.importProducts} setTargets={actions.setTargets} canEdit={isAdmin} />
+            <Inventory
+              inventory={data.inventory}
+              adjustStock={actions.adjustStock}
+              importProducts={actions.importProducts}
+              setTargets={actions.setTargets}
+              setStocks={actions.setStocks}
+              canEdit={isAdmin}
+            />
           )}
           {status === 'ready' && screen === 'calendar' && <MyCalendar mine={myCalendar} actions={actions} />}
           {status === 'ready' && screen === 'admin' && isAdmin && (

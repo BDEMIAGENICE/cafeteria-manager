@@ -190,6 +190,11 @@ export const api = {
     Promise.all(
       targets.map((t) => supabase.from('products').update({ target_level: t.targetLevel }).eq('id', t.id).then(check)),
     ),
+  // stocks: [{ id, current }]
+  setStocks: (stocks) =>
+    Promise.all(
+      stocks.map((s) => supabase.from('products').update({ current: s.current }).eq('id', s.id).then(check)),
+    ),
 
   // services: usual hours per weekday, exceptions per date, sign-ups per date
   // rows: [{ weekday, time_label, needed }] for open weekdays; the others are closed.
