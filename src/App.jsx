@@ -117,6 +117,7 @@ function Signed({ session }) {
     importProducts: run(api.importProducts),
     setTargets: run(api.setTargets),
     setStocks: run(api.setStocks),
+    setPrices: run(api.setPrices),
     // services (one a day, identified by its date)
     setOpeningHours: run(api.setOpeningHours),
     setServiceWeek: run(api.setServiceWeek),
@@ -218,6 +219,7 @@ function Signed({ session }) {
               importProducts={actions.importProducts}
               setTargets={actions.setTargets}
               setStocks={actions.setStocks}
+              setPrices={actions.setPrices}
               canEdit={isAdmin}
             />
           )}

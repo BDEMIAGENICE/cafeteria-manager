@@ -179,10 +179,14 @@ export const api = {
       );
     }
   },
-  adjustStock: (id, current, targetLevel) =>
+  adjustStock: (id, current, targetLevel, price) =>
     supabase
       .from('products')
-      .update({ current, ...(targetLevel !== undefined && { target_level: targetLevel }) })
+      .update({
+        current,
+        ...(targetLevel !== undefined && { target_level: targetLevel }),
+        ...(price !== undefined && { price }),
+      })
       .eq('id', id)
       .then(check),
   // targets: [{ id, targetLevel }], targetLevel null clears the target.
@@ -195,6 +199,10 @@ export const api = {
     Promise.all(
       stocks.map((s) => supabase.from('products').update({ current: s.current }).eq('id', s.id).then(check)),
     ),
+
+  // prices: [{ id, price }], 0 means no price.
+  setPrices: (prices) =>
+    Promise.all(prices.map((p) => supabase.from('products').update({ price: p.price }).eq('id', p.id).then(check))),
 
   // services: usual hours per weekday, exceptions per date, sign-ups per date
   // rows: [{ weekday, time_label, needed }] for open weekdays; the others are closed.

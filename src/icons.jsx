@@ -61,3 +61,8 @@ export const CalendarCheckIcon = (p) => (
     <path d="m9 16 2 2 4-4" />
   </Icon>
 );
+export const ChevronDownIcon = (p) => (
+  <Icon size={16} {...p}>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+);
