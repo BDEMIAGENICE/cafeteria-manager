@@ -1,6 +1,6 @@
 // Reads a SumUp "items export" CSV and works out what an import would change.
 
-function parseCsv(text) {
+export function parseCsv(text) {
   const rows = [];
   let row = [];
   let cell = '';
@@ -30,7 +30,7 @@ function parseCsv(text) {
 export const nameKey = (s) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
 
-const COLS = {
+export const COLS = {
   name: 'Item name',
   price: 'Price',
   quantity: 'Quantity',
@@ -39,7 +39,7 @@ const COLS = {
   id: 'Item id (Do not change)',
 };
 
-const num = (v) => {
+export const num = (v) => {
   const n = parseFloat(String(v ?? '').replace(',', '.'));
   return Number.isFinite(n) ? n : null;
 };

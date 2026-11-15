@@ -166,6 +166,21 @@ input[type='checkbox']:disabled { opacity: 0.45; cursor: not-allowed; }
 .shift-people { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .shift-person { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .shift-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* menu button: a short list of actions under one button */
+.menu { position: relative; display: inline-flex; }
+.menu-list {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40; min-width: 100%; width: max-content;
+  display: flex; flex-direction: column; padding: 6px;
+  background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-sm);
+}
+.menu-item {
+  text-align: left; font: inherit; font-size: 15px; color: var(--color-text);
+  background: transparent; border: 0; border-radius: 6px; padding: 10px 12px; cursor: pointer;
+}
+.menu-item:hover, .menu-item:focus-visible { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+.menu-item:focus-visible { outline-offset: -2px; }
+.menu-item:disabled { opacity: 0.45; cursor: not-allowed; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 select.input { appearance: auto; }
 .steps { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: var(--space-2); font-size: 14px; color: var(--color-neutral-700); max-width: 64ch; }

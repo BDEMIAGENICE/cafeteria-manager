@@ -172,13 +172,20 @@ export default {
     'Définissez le stock de chaque article à la main, pour un inventaire complet rapide.',
   'Min. {n}': 'Min. {n}',
   'Export stock': 'Exporter les stocks',
-  'Choose a format to download the current stock list.': 'Choisissez un format pour télécharger la liste des stocks actuels.',
-  'Export as JSON': 'Exporter en JSON',
-  'Export as CSV': 'Exporter en CSV',
   'Leave empty to keep this item off the shopping list.': 'Laissez vide pour ne pas mettre cet article dans la liste de courses.',
   'The level each item should be brought back to when restocking. Leave empty for items you don’t restock.':
     'Le niveau auquel ramener chaque article lors du réapprovisionnement. Laissez vide pour les articles que vous ne rachetez pas.',
   '{n} in stock': '{n} en stock',
+  'Set prices': 'Modifier les prix',
+  'Batch update': 'Modification groupée',
+  Download: 'Télécharger',
+  'Export your items from SumUp first, then choose that file. The app writes its stock and prices into it, and you import the new file back into SumUp.':
+    'Exportez d’abord vos articles depuis SumUp, puis choisissez ce fichier. L’application y écrit son stock et ses prix, et vous importez le nouveau fichier dans SumUp.',
+  'Not in SumUp': 'Absents de SumUp',
+  'Not in the SumUp file: add them in SumUp first': 'Absents du fichier SumUp : ajoutez-les d’abord dans SumUp',
+  'Selling prices': 'Prix de vente',
+  'Change as many prices as you need, then save once. Leave empty for items with no price.':
+    'Modifiez autant de prix que nécessaire, puis enregistrez une seule fois. Laissez vide pour les articles sans prix.',
   'Shopping list': 'Liste de courses',
   'Shopping list — {date}': 'Liste de courses — {date}',
   'Order online for home delivery:': 'Commander en ligne avec livraison à domicile :',

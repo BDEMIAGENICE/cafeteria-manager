@@ -2,15 +2,22 @@ import { useState } from 'react';
 import Dialog from '../Dialog.jsx';
 import { useT } from '../i18n.jsx';
 import { planImport } from '../importStock.js';
+import { planExport } from '../exportStock.js';
 import { buildShoppingList, shoppingListText } from '../shoppingList.js';
-import { stockJson, stockCsv } from '../exportStock.js';
 import { DRIVE_SITES } from '../driveSites.js';
 import { todayKey } from '../dates.js';
 import Michel from '../Michel.jsx';
 import CountUp from '../CountUp.jsx';
+import Menu from '../Menu.jsx';
 
 // Empty field = no target.
 const readTarget = (value) => (value === '' || value == null ? null : Math.max(0, Number(value)));
+
+// 0 means no price set, the same rule as the public stock page.
+const formatPrice = (price) => (price > 0 ? `€${Number(price).toFixed(2)}` : '—');
+
+// Empty field = no price, stored as 0.
+const readPrice = (value) => (value === '' || value == null ? 0 : Math.max(0, Number(value)));
 
 const downloadFile = (filename, content, mime) => {
   const blob = new Blob([content], { type: mime });
@@ -19,21 +26,45 @@ const downloadFile = (filename, content, mime) => {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Revoking right after click() can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-export default function Inventory({ inventory, adjustStock, importProducts, setTargets, setStocks, canEdit }) {
+export default function Inventory({ inventory, adjustStock, importProducts, setTargets, setStocks, setPrices, canEdit }) {
   const { t, lang } = useT();
   const [adjusting, setAdjusting] = useState(null);
   const [editingTargets, setEditingTargets] = useState(false);
   const [editingStocks, setEditingStocks] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [editingPrices, setEditingPrices] = useState(false);
   const [shopping, setShopping] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(null);
   const [importing, setImporting] = useState(false);
   const [plan, setPlan] = useState(null);
   const [importError, setImportError] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportPlan, setExportPlan] = useState(null);
+  const [exportError, setExportError] = useState(null);
+
+  const closeExport = () => {
+    setExporting(false);
+    setExportPlan(null);
+    setExportError(null);
+  };
+  const readExportFile = async (file) => {
+    setExportPlan(null);
+    setExportError(null);
+    if (!file) return;
+    try {
+      setExportPlan(planExport(await file.text(), inventory));
+    } catch (e) {
+      setExportError(e.message);
+    }
+  };
+  const downloadExport = () => {
+    downloadFile(`sumup-items-${todayKey()}.csv`, exportPlan.text, 'text/csv;charset=utf-8');
+    closeExport();
+  };
 
   const closeImport = () => {
     setImporting(false);
@@ -84,15 +115,15 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
         </div>
         <div className="shift-actions">
           {canEdit && (
-            <>
-              <button className="btn btn-secondary" onClick={() => setImporting(true)}>{t('Import stock')}</button>
-              <button className="btn btn-secondary" onClick={() => setEditingStocks(true)} disabled={inventory.length === 0}>
-                {t('Set stock')}
-              </button>
-              <button className="btn btn-secondary" onClick={() => setEditingTargets(true)} disabled={inventory.length === 0}>
-                {t('Set targets')}
-              </button>
-            </>
+            <Menu
+              label={t('Batch update')}
+              items={[
+                { label: t('Import stock'), onSelect: () => setImporting(true) },
+                { label: t('Set stock'), onSelect: () => setEditingStocks(true), disabled: inventory.length === 0 },
+                { label: t('Set targets'), onSelect: () => setEditingTargets(true), disabled: inventory.length === 0 },
+                { label: t('Set prices'), onSelect: () => setEditingPrices(true), disabled: inventory.length === 0 },
+              ]}
+            />
           )}
           <button className="btn btn-secondary" onClick={() => setExporting(true)} disabled={inventory.length === 0}>
             {t('Export stock')}
@@ -133,6 +164,7 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
                 <th>{t('Minimum')}</th>
                 <th>{t('Target')}</th>
                 <th>{t('This week')}</th>
+                <th>{t('Price')}</th>
                 <th>{t('Status')}</th>
                 <th></th>
               </tr>
@@ -158,6 +190,7 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
                     <td data-label={t('Minimum')}>{item.minLevel}</td>
                     <td data-label={t('Target')}>{item.targetLevel ?? '—'}</td>
                     <td data-label={t('This week')}>{item.weeklyUsage}</td>
+                    <td data-label={t('Price')}>{formatPrice(item.price)}</td>
                     <td>
                       <span className={low ? 'tag tag-warn' : 'tag tag-accent-2'}>{low ? t('Low') : t('OK')}</span>
                     </td>
@@ -179,7 +212,12 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
           title={t('Adjust {name}', { name: adjusting.name })}
           onClose={() => setAdjusting(null)}
           onSubmit={(data) => {
-            adjustStock(adjusting.id, Math.max(0, Number(data.get('current'))), readTarget(data.get('target')));
+            adjustStock(
+              adjusting.id,
+              Math.max(0, Number(data.get('current'))),
+              readTarget(data.get('target')),
+              Math.max(0, Number(data.get('price'))),
+            );
             setAdjusting(null);
           }}
         >
@@ -209,6 +247,19 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
               defaultValue={adjusting.targetLevel ?? ''}
             />
             <span className="hint">{t('Leave empty to keep this item off the shopping list.')}</span>
+          </div>
+          <div className="field">
+            <label htmlFor="price">{t('Selling price (€)')}</label>
+            <input
+              id="price"
+              name="price"
+              className="input"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={adjusting.price}
+              required
+            />
           </div>
         </Dialog>
       )}
@@ -290,32 +341,40 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
         </Dialog>
       )}
 
-      {exporting && (
-        <Dialog title={t('Export stock')} onClose={() => setExporting(false)}>
-          <p className="text-muted" style={{ margin: 0 }}>
-            {t('Choose a format to download the current stock list.')}
+      {editingPrices && (
+        <Dialog
+          title={t('Selling prices')}
+          wide
+          onClose={() => setEditingPrices(false)}
+          onSubmit={async (data) => {
+            const changed = inventory
+              .map((i) => ({ id: i.id, price: readPrice(data.get(`price-${i.id}`)), before: Number(i.price) || 0 }))
+              .filter((c) => c.price !== c.before);
+            if (changed.length) await setPrices(changed.map(({ id, price }) => ({ id, price })));
+            setEditingPrices(false);
+          }}
+        >
+          <p className="text-muted" style={{ margin: 0, fontSize: 14 }}>
+            {t('Change as many prices as you need, then save once. Leave empty for items with no price.')}
           </p>
-          <div className="shift-actions">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                downloadFile(`stock-${todayKey()}.json`, stockJson(inventory), 'application/json');
-                setExporting(false);
-              }}
-            >
-              {t('Export as JSON')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                downloadFile(`stock-${todayKey()}.csv`, stockCsv(inventory, t), 'text/csv;charset=utf-8;');
-                setExporting(false);
-              }}
-            >
-              {t('Export as CSV')}
-            </button>
+          <div className="target-list">
+            {inventory.map((item) => (
+              <div key={item.id} className="target-row">
+                <label htmlFor={`price-${item.id}`}>
+                  <span style={{ fontWeight: 600 }}>{item.name}</span>
+                  {item.category && <span className="hint">{item.category}</span>}
+                </label>
+                <input
+                  id={`price-${item.id}`}
+                  name={`price-${item.id}`}
+                  className="input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={item.price > 0 ? item.price : ''}
+                />
+              </div>
+            ))}
           </div>
         </Dialog>
       )}
@@ -377,6 +436,65 @@ export default function Inventory({ inventory, adjustStock, importProducts, setT
               </div>
               {copyError && <p style={{ margin: 0, color: 'var(--color-danger)' }}>{copyError}</p>}
             </>
+          )}
+        </Dialog>
+      )}
+
+      {exporting && (
+        <Dialog
+          title={t('Export stock')}
+          submitLabel="Download"
+          onClose={closeExport}
+          onSubmit={() => exportPlan && downloadExport()}
+        >
+          <p className="text-muted" style={{ margin: 0, fontSize: 14 }}>
+            {t('Export your items from SumUp first, then choose that file. The app writes its stock and prices into it, and you import the new file back into SumUp.')}
+          </p>
+          <div className="field">
+            <label htmlFor="export-file">{t('SumUp items export (.csv)')}</label>
+            <input
+              id="export-file"
+              type="file"
+              accept=".csv,text/csv"
+              className="input"
+              onChange={(e) => readExportFile(e.target.files[0])}
+              required
+            />
+          </div>
+          {exportError && <p style={{ margin: 0, color: 'var(--color-danger)' }}>{t(exportError)}</p>}
+          {exportPlan && (
+            <div className="import-summary">
+              <div className="import-stats">
+                <div className="import-stat">
+                  <div className="import-stat-value" style={{ color: 'var(--color-accent-2-700)' }}>{exportPlan.updated}</div>
+                  <div className="label-caps">{t('Updated')}</div>
+                </div>
+                <div className="import-stat">
+                  <div className="import-stat-value" style={{ color: 'var(--color-warn-800)' }}>{exportPlan.missing.length}</div>
+                  <div className="label-caps">{t('Not in SumUp')}</div>
+                </div>
+                <div className="import-stat">
+                  <div className="import-stat-value">{exportPlan.skipped.length}</div>
+                  <div className="label-caps">{t('Ignored')}</div>
+                </div>
+              </div>
+              {exportPlan.missing.length > 0 && (
+                <details className="import-details">
+                  <summary>{t('Not in the SumUp file: add them in SumUp first')}</summary>
+                  <div className="import-tags">
+                    {exportPlan.missing.map((n) => <span key={n} className="tag tag-warn">{n}</span>)}
+                  </div>
+                </details>
+              )}
+              {exportPlan.skipped.length > 0 && (
+                <details className="import-details">
+                  <summary>{t('Ignored: stock not tracked')}</summary>
+                  <div className="import-tags">
+                    {exportPlan.skipped.map((n) => <span key={n} className="tag tag-neutral">{n}</span>)}
+                  </div>
+                </details>
+              )}
+            </div>
           )}
         </Dialog>
       )}
